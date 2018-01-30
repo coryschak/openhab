@@ -1,0 +1,184 @@
+//***********************************************************************************************************************************************
+// 													Calculate GPS Distance from Home Location and set user to present/away				 																*
+//***********************************************************************************************************************************************
+val Functions$Function6<String, Integer, GenericItem, GenericItem, GenericItem, GenericItem, Boolean> ParseGPSDistance = [
+    label,
+    radius,
+    latitude, 
+    longitude, 
+    distance, 
+    phoneGPS | 
+    
+{
+	  logInfo("-12-Owntracks.F1", "### Function Called: ParseGPSDistance for "+label+"  ###")	
+	  val PointType homeLocation = new PointType("48.41532,-89.333156")
+	  val PointType newLocation = new PointType(latitude.state+","+longitude.state)
+	  logInfo("-12-Owntracks.F1."+label," <--  NewLocation: " +newLocation +".")
+	  var int newdistance = (newLocation.distanceFrom(homeLocation).intValue)
+	  logInfo("-12-Owntracks.F1."+label," <--  Current Distance: " +newdistance +" meters.")
+	  if(distance.state === null) distance.postUpdate(0)
+	  logInfo("-12-Owntracks.F1."+label," <--  Previous Distance: " + (distance.state as DecimalType).intValue +" meters.")
+	  var int distancechange = (newdistance - ((distance.state as DecimalType).intValue))
+	  Thread::sleep(100) 
+	  if (distancechange < 0){
+	  	logInfo("-12-Owntracks.F1."+label," -->  Moved " +distancechange +" meters closer to home")
+	  } else {
+	  	logInfo("-12-Owntracks.F1."+label," -->  Moved " +distancechange +" meters away to home")
+	  }
+	  distance.postUpdate(newdistance)
+	  Thread::sleep(100) 
+	  if (distance.state > radius){
+	  		if (phoneGPS.state == ON) {
+		  		logInfo("-12-Owntracks.F1."+label," -->  "+phoneGPS.name+" is set to AWAY")
+		  		phoneGPS.postUpdate(OFF)
+	  		}
+	  }else {
+	  		if (phoneGPS.state == OFF) {
+		  		phoneGPS.postUpdate(ON)
+		  		logInfo("-12-Owntracks.F1."+label," -->  "+phoneGPS.name+" is set to PRESENT")
+	  		}
+	  }
+	  logInfo("-12-Owntracks.F1."+label," -->  "+label+" Distance from Home: " + distance.state + " meters")
+	 // pushover(null, null,"Distance: "+distance.state+"m\n\n", null,"Chris GPS", null, null, 0, null)	
+}
+true
+]
+
+//***********************************************************************************************************************************************
+// 													Parse MQTT GPS Coordinates from Owntracks/ZANITO				 																*
+//***********************************************************************************************************************************************
+val Functions$Function6<String, GenericItem, GenericItem, GenericItem, GenericItem, GenericItem, Boolean> ParseMQTTGPS = [
+    label,
+    itemraw,
+    latitude,
+    longitude,
+    accuracy,
+    location |
+    
+{	
+	logInfo("-12-Owntracks.F2", "### Function Called: ParseMQTTGPS for "+label+"  ###")	
+   	
+	    val String json = (itemraw.state as StringType).toString
+	    val String type = transform("JSONPATH", "$._type", json)
+	    if (type == "location") {
+	    	logInfo("-12-Owntracks.F2."+label," --> Detected incoming OWNTRACKS Coordinates")
+			//OWNTRACKS
+			val String lat  = transform("JSONPATH", "$.lat", json)
+			val String lon  = transform("JSONPATH", "$.lon", json)
+			val String acc  = transform("JSONPATH", "$.acc", json)
+			//val String batt = transform("JSONPATH", "$.batt", json)
+			//battery.postUpdate(new PercentType(batt))
+			
+			accuracy.postUpdate(new DecimalType(acc))
+			latitude.postUpdate(new DecimalType(lat))
+			longitude.postUpdate(new DecimalType(lon))
+			Thread::sleep(50)      
+			
+				if(accuracy.state < 200){
+					location.postUpdate(new PointType(lat + "," + lon))
+				  	logInfo("-12-Owntracks.F2."+label," --> GPS Accuracy < 200 Meters ("+accuracy.state+"). Calculating distance of:" + lat + "," + lon+ "!")
+				} else {
+				  	logInfo("-12-Owntracks.F2."+label," --> GPS Accuracy > 200m ("+accuracy.state+") Ignoring Location")
+				}
+			} /*else {
+					logInfo("RULE.-12-.FUNCTION.ParseMQTTGPS."+label," --> Detected incoming ZANZITO Coordinates")
+			    	//ZANZITO
+			    	val String lat  = transform("JSONPATH", "$.latitude", json)
+			      	val String lon  = transform("JSONPATH", "$.longitude", json)
+			      	val String acc  = transform("JSONPATH", "$.gps_accuracy", json)
+			      	//val String batt = transform("JSONPATH", "$.battery_level", json)
+			      	//battery.postUpdate(new PercentType(batt))
+			      	
+			      	accuracy.postUpdate(new DecimalType(acc))
+					latitude.postUpdate(new DecimalType(lat))
+					longitude.postUpdate(new DecimalType(lon))
+					Thread::sleep(300)      
+					
+					if(accuracy.state < 200){
+						location.postUpdate(new PointType(lat + "," + lon))
+					  	logInfo("RULE.-12-.FUNCTION.ParseMQTTGPS."+label," --> GPS Accuracy < 200 Meters ("+accuracy.state+"). Calculating distance of:" + new PointType(lat + "," + lon )+ "!")
+					} else {
+					  	logInfo("RULE.-12-.FUNCTION.ParseMQTTGPS."+label," --> GPS Accuracy > 200m ("+accuracy.state+") Ignoring Location")
+					}
+			    }*/
+	
+}
+true
+]
+//-------------------------------------------------	END OF FUNCTIONS ---------------------------------------------------------------------------
+//														 -----
+//------------------------------------------------- RULES BEGIN BELOW --------------------------------------------------------------------------
+
+//***********************************************************************************************************************************************
+// 													Owntracks MQTT Message Received	for CHRIS		 																*
+//***********************************************************************************************************************************************
+rule "OwnTracks: Chris GPS Coordinates changed. Parse Coordinates"
+when 
+	Item mqttPositionChrisRaw changed
+then
+	logInfo("-12-Owntracks.R1", "### OwnTracks: Chris GPS Coordinates changed. Parse Coordinates###")
+  	{
+  		logInfo("-12-Owntracks.R1", "--> Calling Function ParseMQTTGPS for MqttPostionParseChris")
+  		ParseMQTTGPS.apply("ChrisPhone", mqttPositionChrisRaw, mqttChrisLatitude, mqttChrisLongitude, mqttChrisAccuracy, locationChris)
+	}
+end
+
+//***********************************************************************************************************************************************
+// 													Zanzito MQTT Message Received for CHRIS		 																*
+//***********************************************************************************************************************************************
+/*rule "MqttPostionParseChris via ZANZITO"
+when 
+	Item mqttPositionChrisRaw2 changed
+then
+	logInfo("RULE.RUNNING.-12-", "### MqttPostionParseChris via ZANZITO ###")
+  	{
+  		//ParseMQTTGPS.apply("ChrisPhone", mqttPositionChrisRaw2, mqttChrisLatitude, mqttChrisLongitude, mqttChrisAccuracy, locationChris)
+	}
+end
+*/
+
+//***********************************************************************************************************************************************
+// 													Calculate Chris' Location to determine if Home or Away	 																*
+//***********************************************************************************************************************************************
+rule "Owntracks (CHRIS) Parse GPS Coordinates to Determine if Home or Away"
+when
+  Item locationChris changed
+  //Item locationChris received update
+then
+logInfo("-12-Owntracks.R2", "### Owntracks (CHRIS) Parse GPS Coordinates to Determine if Home or Away ###")
+{
+	logInfo("-12-Owntracks.R2", "--> Calling Function ParseGPSDistance for CHRIS")
+	ParseGPSDistance.apply("ChrisPhone", 700, mqttChrisLatitude, mqttChrisLongitude, chris_distance, chris_phoneGPS)
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													Owntracks MQTT Message Received	for Alexa	 																*
+//***********************************************************************************************************************************************
+rule "OwnTracks: Alexa GPS Coordinates changed. Parse Coordinates"
+when 
+	Item mqttPositionAlexaRaw received update
+then
+	logInfo("-12-Owntracks.R3", "### OwnTracks: Alexa GPS Coordinates changed. Parse Coordinates ###")
+  	{
+  		logInfo("-12-Owntracks.R3", "--> Calling Function ParseMQTTGPS for Alexa")
+  		ParseMQTTGPS.apply("AlexaPhone", mqttPositionAlexaRaw, mqttAlexaLatitude, mqttAlexaLongitude, mqttAlexaAccuracy, locationAlexa)
+	}
+end
+
+
+//***********************************************************************************************************************************************
+// 													Calculate Alexa's Location to determine if Home or Away	 																*
+//***********************************************************************************************************************************************
+rule "Owntracks (ALEXA) Parse GPS Coordinates to Determine if Home or Away"
+when
+  Item locationAlexa changed
+  //Item locationAlexa received update
+then
+logInfo("-12-Owntracks.R4", "### Owntracks (ALEXA) Parse GPS Coordinates to Determine if Home or Away ###")
+{
+	logInfo("-12-Owntracks.R4", "--> Calling Function ParseGPSDistance for ALEXA")
+	ParseGPSDistance.apply("AlexaPhone", 700, mqttAlexaLatitude, mqttAlexaLongitude, alexa_distance, alexa_phoneGPS)
+}
+end

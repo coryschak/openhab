@@ -1,0 +1,8 @@
+Group gOverride 					"Global Override"
+
+
+Switch          vDoorOpenLights_Override 	    "Door Sensor Lighting" 	<frontdoor>		(gOverride)     // Exterior Door Sensor Lighting
+Switch          vAutoLock_Override 	            "Auto-Locking" 			<lock>			(gOverride)     // Auto Locking
+Switch          vLightAutoOffTimer_Override     "Light Auto Off Timer"  <light>         (gOverride)     // Interior Auto-off Light Timers
+Switch          vMotion_Override                "Motion"                <light>         (gOverride)     // Use Motion Sensors
+Switch          vPresence_Override 		        "Presence" 				<presence>		(gOverride)     // Use Presence Detection

@@ -1,0 +1,144 @@
+// Naming Convention: Starts with
+// - g : Group
+// - v : Value/Sensor
+// - a : Actuator
+// - t : Timer using Expire binding
+
+Group ALL
+Group gOFFWhenNoPresence       //Turn these devices off when no one is present
+Group gOFFatMidnight            //Turn these devices OFF at Midnight. Cron RULE Runs this
+Group gLights (ALL)
+Group Persistence
+
+Group:Switch:OR(ON,OFF) gChristmasLights
+Group gSoffitLights
+Group gLightsOFFifDAYLIGHT //add lights to this group to not allow them to stay on if bright out. only works with dimmers
+Group gBatteryStatus
+
+
+/* ------------ */
+/* Global Switches */
+/* ------------ */	
+
+
+
+
+
+Switch SystemStarting
+
+
+/* ------------------------- */
+/* zigbee smartthings lights */
+/* ------------------------- */	
+Switch 		vdev						"Dev Switch"
+Switch	 	vEcosmart					"Ecosmart GU10 [%s]"   				{mqtt=">[openhab:smartthings/Ecosmart/switch:command:*:MAP(ONOFF_to_lower.map)], <[openhab:smartthings/Ecosmart/switch:state:MAP(onoff_to_UPPER.map)]"}
+Dimmer 		vEcosmart_dimmer    		"Ecosmart GU10 Dimmer [%d]"			{mqtt=">[openhab:smartthings/Ecosmart/level:command:*:default], <[openhab:smartthings/Ecosmart/level:state:default]"}
+Number 		vEcosmart_colorTemperature  "Ecosmart GU10 Color Temp [%s]"  	{mqtt=">[openhab:smartthings/Ecosmart/colorTemperature:command:*:default], <[openhab:smartthings/Ecosmart/colorTemperature:state:default]"}
+
+
+
+/* ------------------------- */
+/* dimmer switches / light syncing */
+/* ------------------------- */	
+Group gDimmers
+Group gDimmersValue
+Group gPatioDoorLights
+Group gHouseDoorLights
+Group gSoffitRestore
+
+Number          SoffitTimerTimeout              "Soffit Lighting Timeout [%d sec]"
+Number 			dimmerSync 						"What lights to Sync?"						<light>
+Switch			AllowLightsDaylight				"Prevent Lights ON during Daylight"
+
+Dimmer			Light_House_Soffit				"Driveway [%d %%]" 	  				<outdoorlight>		(gOFFWhenNoPresence, gOFFatMidnight, gSoffitLights, gDimmers, gLights, gLightsOFFifDAYLIGHT, gPatioDoorLights, gHouseDoorLights)	{ channel="zwave:device:160ec2a0602:node2:switch_dimmer" }
+Number  		Light_House_Soffit_Scene		"Driveway Soffit Lights_Scene"   																												{ channel="zwave:device:160ec2a0602:node2:scene_number" }
+Number			Light_House_Soffit_Restore		"H.Driveway Restore [%d %%]"																(gSoffitRestore)
+//Dimmer			Light_Garage_Soffit				"Garage Soffit [%d %%]" 					<outdoorlight>		(gOFFWhenNoPresence, gDimmers, gLights, gLightsOFFifDAYLIGHT, gPatioDoorLightsgHouseDoorLights) 					{ channel="zwave:device:160ec2a0602:node3:switch_dimmer" }
+
+Dimmer			vSideGarageSoffit				"Side [%d %%]" 				<outdoorlight>		(gOFFWhenNoPresence, gOFFatMidnight, gSoffitLights, gDimmers, gLights, gLightsOFFifDAYLIGHT, gPatioDoorLights) 					{ channel="zwave:device:160ec2a0602:node3:switch_dimmer" }
+Number			vSideGarageSoffit_Restore		"G.Side Restore [%d %%]"																(gSoffitRestore)
+
+Dimmer			vFrontGarageSoffit				"Front [%d %%]"				<outdoorlight>		(gOFFWhenNoPresence, gOFFatMidnight, gSoffitLights, gDimmers, gLights, gLightsOFFifDAYLIGHT, gPatioDoorLights, gHouseDoorLights)	{ channel="zwave:device:160ec2a0602:node20:switch_dimmer" }
+Number  		vFrontGarageSoffit_Scene		"Front Garage Soffit Lights_Scene"   																												{ channel="zwave:device:160ec2a0602:node20:scene_number" } 	
+Number 			vFrontGarageSoffit_Restore		"G.Front Restore [%d %%]"																(gSoffitRestore)
+
+Dimmer			vFrontHouseSoffit				"Front [%d %%]"				<outdoorlight>		(gOFFWhenNoPresence, gOFFatMidnight, gSoffitLights, gDimmers, gLights, gLightsOFFifDAYLIGHT)	{ channel="zwave:device:160ec2a0602:node19:switch_dimmer" }
+Number  		vFrontHouseSoffit_Scene			"Front House Soffit Lights_Scene"   																												{ channel="zwave:device:160ec2a0602:node19:scene_number" } 	
+Number			vFrontHouseSoffit_Restore		"H.Front Restore [%d %%]"																(gSoffitRestore)
+
+Dimmer			vEntranceStairLights				"Entrance Stair Lights [%d %%]"			<outdoorlight>		(gOFFWhenNoPresence, gDimmers, gLights, gLightsOFFifDAYLIGHT)	{ channel="zwave:device:160ec2a0602:node18:switch_dimmer" }
+Number  		vEntranceStairLights_Scene			"Entrance Stair Lights_Scene"   																								{ channel="zwave:device:160ec2a0602:node18:scene_number" } 	
+
+Dimmer			vMBR_HeadboardPots				"MBR Headboard Lights [%d %%]"					<light>				(gOFFWhenNoPresence, gDimmers, gLights)	{ channel="zwave:device:160ec2a0602:node26:switch_dimmer" }
+Number  		vMBR_HeadboardPots_Scene		"MBR Headboard Lights_Scene"   																				{ channel="zwave:device:160ec2a0602:node26:scene_number" } 	
+
+Dimmer			vMBR_CenterPots			"MBR Ceiling Lights [%d %%]"					<light>				(gOFFWhenNoPresence, gDimmers, gLights)	{ channel="zwave:device:160ec2a0602:node25:switch_dimmer" }
+Number  		vMBR_CenterPots_Scene		"MBR Ceiling Lights_Scene"   																				{ channel="zwave:device:160ec2a0602:node25:scene_number" } 	
+
+Dimmer			vHallwayLights			"Hallway Lights [%d %%]"					<light>				(gOFFWhenNoPresence, gDimmers, gLights)	{ channel="zwave:device:160ec2a0602:node37:switch_dimmer" }
+Number  		vHallwayLights_Scene	"Hallway Lights_Scene"   																				{ channel="zwave:device:160ec2a0602:node37:scene_number" } 	
+
+
+
+/* ------------------------- */
+/* RGBW LED STRIP			*/
+/* ------------------------- */	
+Dimmer vLEDStrip_power "Power" (gLights) {channel="wifiled:wifiled:A020A61D8EBF:power"}
+Dimmer vLEDStrip_white "White" (gLights) {channel="wifiled:wifiled:A020A61D8EBF:white"}
+Color  vLEDStrip_color "Color" (gLights) {channel="wifiled:wifiled:A020A61D8EBF:color"}
+
+/* ------------------------- */
+/* Outlets */
+/* ------------------------- */	
+Switch  		vOfficeOutlet   				"Office Computer Rcpt."   		  		 	{ channel="zwave:device:160ec2a0602:node6:switch_binary" }
+
+Switch			Rcpt_Garage						"Garage Christmas Lights"					(gOFFWhenNoPresence, gOFFatMidnight, gChristmasLights) 		{ channel="zwave:device:160ec2a0602:node4:switch_binary" }
+Switch  		Rcpt_House_Outside     			"House Outdoor Christmas Lights"      		(gOFFWhenNoPresence, gOFFatMidnight, gChristmasLights)  	{ channel="zwave:device:160ec2a0602:node30:switch_binary" }
+
+
+
+
+
+/* -------------- */
+/* Motion Sensors */
+/* -------------- */
+Group:Number:OR(1,0) gEntrancePIR
+Number pirEntrance_StairFacing							"Entrance Stair Facing Motion Sensor [%d]" 					<motion> 		(gEntrancePIR)	 		{channel="zwave:device:160ec2a0602:node12:sensor_binary"}
+Number pirEntrance_StairFacing_Temp					"Entrance Stair Facing Motion Sensor Temp" 					<temperature>  							{channel="zwave:device:160ec2a0602:node12:sensor_temperature"}
+Number pirEntrance_StairFacing_Battery				"Entrance Stair Facing Motion Sensor Battery" 				<energy>  		(gBatteryStatus) 		{channel="zwave:device:160ec2a0602:node12:battery-level"}
+
+
+
+Number pirEntrance_DoorFacing			    "Entrance Door Facing Motion Sensor [%d]" 			<motion>  				(gEntrancePIR)				{channel="zwave:device:160ec2a0602:node11:sensor_binary"}
+Number pirEntrance_DoorFacing_Temp			"Entrance Door Facing Motion Sensor Temp" 			<temperature>  							{channel="zwave:device:160ec2a0602:node11:sensor_temperature"}
+Number pirEntrance_DoorFacing_Battery		"Entrance Door Facing Motion Sensor Battery" 			<energy>  		(gBatteryStatus) 		{channel="zwave:device:160ec2a0602:node11:battery-level"}
+
+
+
+
+/*PIONEER BINDING*/
+/*
+String AV_Display "Amp: [%s]" 	{channel="pioneeravr:ipAvrUnsupported:5F9EC1B3-ED59-79BF-4530-745E1C1147C8:displayInformation#displayInformation"}
+Switch AV_SpeakerA "Amp Speaker: [%s]"{ channel="pioneeravr:ipAvrUnsupported:5F9EC1B3-ED59-79BF-4530-745E1C1147C8:zone1#SPEAKERS_A"}
+*/
+
+/*CHROMECAST*/
+/*
+Dimmer vChromeCastKitchen_Volume  	{ channel="chromecast:chromecast:becdf22b325277e3e156f044c1839fcb:volume" }
+Player vChromeCastKitchen_Control 	{ channel="chromecast:chromecast:becdf22b325277e3e156f044c1839fcb:control" }
+String vChromeCastKitchen_uri		{ channel="chromecast:chromecast:becdf22b325277e3e156f044c1839fcb:playuri" }
+
+Dimmer vChromeCastGarageSpkr_Volume  { channel="chromecast:audio:ef2497b2ccb8e2e96629bfa3d6024dd6:volume" }
+Player vChromeCastGarageSpkr_Control { channel="chromecast:audio:ef2497b2ccb8e2e96629bfa3d6024dd6:control" }
+String vChromeCastGarageSpkr_uri 	 { channel="chromecast:audio:ef2497b2ccb8e2e96629bfa3d6024dd6:playuri"}
+
+Dimmer vChromeCastAmp_Volume  		{ channel="chromecast:chromecast:40b16a70d55928aed94eb3e2e15cf33a:volume" }
+Player vChromeCastAmp_Control 		{ channel="chromecast:chromecast:40b16a70d55928aed94eb3e2e15cf33a:control" }
+String vChromeCastAmp_uri			{ channel="chromecast:chromecast:40b16a70d55928aed94eb3e2e15cf33a:playuri"}
+*/
+Switch	 	vTest
+Switch  	vSiren  				"Siren"   		  		 										{ channel="zwave:device:160ec2a0602:node27:switch_binary" }
+Number		vSiren_Battery			"Siren Battery [%s]"	<energy>    	(gBatteryStatus)	    { channel="zwave:device:160ec2a0602:node27:battery-level" }
+
+
+String	 	vArduino_MQTT_Status    "Arduino MQTT Status [%s]"              		 {mqtt="<[openhab:house/status:state:default"}

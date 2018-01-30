@@ -1,0 +1,59 @@
+var Number CostTemp = 0
+var Number kWhTemp = 0
+
+rule "Converting PowerTDY from Watt to kWh"
+when
+    Item Power_PowerTDY received update
+then
+    
+    kWhTemp = (Power_PowerTDY.state as DecimalType).intValue
+    kWhTemp = (kWhTemp / 1000).floatValue
+    postUpdate(Power_PowerTDY_div, kWhTemp)
+end
+
+rule "Converting Power_PowerMTD from Watt to kWh"
+when
+    Item Power_PowerMTD received update
+then
+    
+    kWhTemp = (Power_PowerMTD.state as DecimalType).intValue
+    kWhTemp = (kWhTemp / 1000).floatValue
+    postUpdate(Power_PowerMTD_div, kWhTemp)
+end
+
+
+rule "Log Power Now to TOU Value for TOU Graphing"
+when
+    Item  Power_Now received update
+then
+	//TOU States are:
+	// 0 = Peak
+	// 1 = Mid Peak
+	// 2 = Off Peak
+	
+	if(Power_CurrentTOU.state == 0 ) {
+		Power_Now_OnPeak.postUpdate(Power_Now.state)
+		
+		} else if (Power_CurrentTOU.state == 1 ) {
+				Power_Now_MidPeak.postUpdate(Power_Now.state)
+		
+			} else if (Power_CurrentTOU.state == 2 ) {
+				Power_Now_OffPeak.postUpdate(Power_Now.state)
+	}
+end
+
+rule "TOU Changed. Zero Out Previous TOU value to clean up graphs for transition"
+when
+    Item Power_CurrentTOU changed
+then
+	//TOU States are:
+	// 0 = Peak
+	// 1 = Mid Peak
+	// 2 = Off Peak
+	
+	//Send a 0 value to each TOU so zero out the graphing used in HABPanel
+		Thread::sleep(200)
+		Power_Now_OnPeak.postUpdate(0)
+		Power_Now_MidPeak.postUpdate(0)
+		Power_Now_OffPeak.postUpdate(0)
+end

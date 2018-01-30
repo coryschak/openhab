@@ -1,0 +1,97 @@
+import org.eclipse.smarthome.core.library.types.DateTimeType
+
+/*
+val Functions$Function3 updateTimeOfDay = [String tod, String ptod, boolean update |
+        logInfo("RULE.TIMEOFDAY.Weather", "Setting PreviousTimeOfDay to \"" + ptod + "\" and TimeOfDay to \"" + tod + "\"")
+        if(update) {
+                TimeOfDay.postUpdate(tod)
+                PreviousTimeOfDay.postUpdate(ptod)
+        }
+        else {
+                TimeOfDay.sendCommand(tod)
+                PreviousTimeOfDay.sendCommand(ptod)
+        }
+]
+
+
+
+
+rule "Get time period for right now"
+when
+        System started
+then
+		val morning = now.withTimeAtStartOfDay.plusHours(6).millis
+        val sunrise = new DateTime((Sunrise_Time.state as DateTimeType).calendar.timeInMillis)
+        val sunset = new DateTime((Sunset_Time.state as DateTimeType).calendar.timeInMillis)
+
+        if(now.isAfter(morning) && now.isBefore(sunrise))       updateTimeOfDay.apply("Morning", "Night", true)
+        else if(now.isAfter(sunrise) && now.isBefore(sunset)) 	updateTimeOfDay.apply("Day", "Morning", true)
+        else if(now.isAfter(sunset) && now.isBefore(evening)) 	updateTimeOfDay.apply("Night", "Day", true)
+
+end
+
+*/
+
+
+
+rule "OpenHAB system started - astro"
+when
+    System started
+
+then
+logInfo("RULE.RUNNING.-06-", "### OpenHAB system started - astro ###")
+      createTimer(now.plusSeconds(180)) [ |
+        logInfo("RULE", "--> astro init")
+        if (now.isAfter((Sunset_Time.state as DateTimeType).zonedDateTime.toInstant().toEpochMilli) ||
+            now.isBefore((Sunrise_Time.state as DateTimeType).zonedDateTime.toInstant().toEpochMilli)
+        ) {
+            logInfo("RULE", "--> Night_State ON")
+            postUpdate(NightState, ON)
+        } else {
+            logInfo("RULE", "--> Night_State OFF")
+            postUpdate(NightState, OFF)
+        }
+    ]
+end
+
+
+rule "Update NightState"
+when
+    Item SunElevation changed
+then
+logInfo("RULE.RUNNING.-06-", "### Update NightState ###")
+    if(SunElevation.state >  0){
+        if(NightState.state != OFF){
+			logInfo("RULE.ASTRO.SunElevation", "--> Sun is crossing the horizon, switching to daylight mode")
+			postUpdate(NightState, OFF)
+		}
+    } else {
+        if(NightState.state != ON) {
+			logInfo("RULE.ASTRO.SunElevation", "--> Sun is crossing the horizon, switching to night mode")
+			postUpdate(NightState, ON)
+		}
+    }
+end
+/*
+
+rule "Morning start"
+when
+        Time cron "0 0 6 * * ? *"
+then
+    updateTimeOfDay.apply("Morning", TimeOfDay.state.toString, false)
+end
+
+rule "Day start"
+when
+        Item Sunrise_Event received update ON
+then
+    updateTimeOfDay.apply("Day", TimeOfDay.state.toString, false)
+end
+
+rule "Night start"
+when
+        Item Sunset_Event received update ON
+then
+    updateTimeOfDay.apply("Night", TimeOfDay.state.toString, false)
+end
+*/

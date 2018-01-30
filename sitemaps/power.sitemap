@@ -1,0 +1,10 @@
+sitemap power label="Power Management" {
+    Frame label="Today:" icon="icon" {
+        Text item=Power_Now
+        Text item=Power_PowerTDY_div
+        Text item=Power_PowerMTD_div 
+    }
+    Frame label="Historical Usage" {
+        Chart item=Power_PowerTDY_div period=d refresh=600 
+    }
+}

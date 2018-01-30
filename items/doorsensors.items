@@ -1,0 +1,39 @@
+/* ------------ */
+/* Door Sensors */
+/* ------------ */	
+Group gDoorSensors 			"Entry Status [MAP(doorsensor.map):%s]" <frontdoor>
+Group gRemindDoorSensors	//Generate a reminder nofication if door sensor is left open
+Group gSoffitDoorSensors 	//All Door sensors used for soffit lighting/triggers
+Group gDoorSensorsTime		//Log last time the sensor was updated
+Group gSoffitDoorLightSwitch//Phantom switch for Door sensors used to trigger soffit lighting
+
+
+
+
+//Number 		vHouseDoor					"House Door [MAP(doorsensor.map):%s]" 				<frontdoor>			(gDoorSensors, gRemindDoorSensors)    	{ channel="zwave:device:160ec2a0602:node13:sensor_binary" }
+Contact 	vHouseDoor					"House Door [%s]" 				<frontdoor>			(gDoorSensors, gRemindDoorSensors, gSoffitDoorSensors)    	{ channel="zwave:device:160ec2a0602:node13:sensor_door" }
+DateTime 	vHouseDoor_LastUpdate		"House Door [%1$tm/%1$td %1$tH:%1$tM]"									(gDoorSensorsTime)
+Number 		vHouseDoor_Battery			"House Door Battery: [%d %%]"						<energy>			(gBatteryStatus)							{ channel="zwave:device:160ec2a0602:node13:battery-level"}
+Switch		vHouseDoor_Soffit			"Soffit Lights to turn ON/OFF based on Door State"						(gSoffitDoorLightSwitch)			
+
+
+//Number 	vPatioDoor1					"Patio Door [MAP(doorsensor.map):%s]"				<frontdoor>			(gDoorSensors, gRemindDoorSensors)    	{ channel="zwave:device:160ec2a0602:node14:sensor_binary" }
+Contact 	vPatioDoor1					"Patio Door [%s]"				<frontdoor>			(gDoorSensors, gRemindDoorSensors, gSoffitDoorSensors)    	{ channel="zwave:device:160ec2a0602:node14:sensor_door" }
+DateTime 	vPatioDoor1_LastUpdate		"Patio Door [%1$tm/%1$td %1$tH:%1$tM]"									(gDoorSensorsTime)
+Number 		vPatioDoor1_Battery			"Patio Door Battery :  [%d %%]"						<energy>			(gBatteryStatus)							{ channel="zwave:device:160ec2a0602:node14:battery-level"}
+Switch		vPatioDoor1_Soffit			"Soffit Lights to turn ON/OFF based on Door State"						(gSoffitDoorLightSwitch)
+
+//Number 	vPatioDoor2					"Patio Door (2nd) [MAP(doorsensor.map):%s]"			<frontdoor>			(gDoorSensors, gRemindDoorSensors)    	{ channel="" }
+//Number 	vPatioDoor2_LastUpdate
+
+Contact		vGarageDoor	 				"Garage Door [%s]"            	<door>              (gDoorSensors, gRemindDoorSensors,gSoffitDoorSensors)    	{ channel="zwave:device:160ec2a0602:node15:sensor_door" }
+DateTime 	vGarageDoor_LastUpdate		"Garage Door [%1$tm/%1$td %1$tH:%1$tM]"				(gDoorSensorsTime)
+Number 		vGarageDoor_Battery			"Garage Side Door Battery: [%d %%]"					<energy>			(gBatteryStatus)	{ channel="zwave:device:160ec2a0602:node15:battery-level"}
+Switch		vGarageDoor_Soffit			"Soffit Lights to turn ON/OFF based on Door State"						(gSoffitDoorLightSwitch)
+
+
+String	 	vGarageDoor_Rear 			"Garage Door Rear [%s]"            	<door>	{mqtt="<[openhab:smartthings/vGarageDoor_Rear/contact:state:default]"}
+Switch	 	vGarageDoor_Test 			"Garage Door Rear [%s]"            	<door>	{mqtt=">[openhab:smartthings/vGarageDoor_Rear/contact:state:ON:open], >[openhab:smartthings/vGarageDoor_Rear/contact:state:off:closed]"}
+
+
+

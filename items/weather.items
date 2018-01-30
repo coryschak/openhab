@@ -1,0 +1,44 @@
+
+/* -------------- */
+/*     Weather    */
+/* -------------- */
+Group Weather
+
+Number   	Humidity   			"Humidity [%d %%]"      	    (Weather)   {weather="locationId=thunderbay, type=atmosphere, property=humidity"}
+Number   	Pressure   			"Pressure [%.2f mb]"            (Weather)   {weather="locationId=thunderbay, type=atmosphere, property=pressure"}
+Number   	Clouds   			"Clouds [%.0f %%]"   		    (Weather)   {weather="locationId=thunderbay, type=clouds, property=percent"}
+
+DateTime ObservationTime0  "Observation time [%1$td.%1$tm.%1$tY %1$tH:%1$tM]" 	(Weather) {weather="locationId=thunderbay, forecast=0, type=condition, property=observationTime"}
+DateTime ObservationTime1  "Observation time [%1$td.%1$tm.%1$tY %1$tH:%1$tM]"   (Weather) {weather="locationId=thunderbay, forecast=1, type=condition, property=observationTime"}
+DateTime ObservationTime2  "Observation time [%1$td.%1$tm.%1$tY %1$tH:%1$tM]"   (Weather) {weather="locationId=thunderbay, forecast=2, type=condition, property=observationTime"}
+
+String   Condition0        "Condition [%s]"    	        (Weather) {weather="locationId=thunderbay, forecast=0, type=condition, property=text"}
+String   Condition1        "Condition [%s]"   	        (Weather) {weather="locationId=thunderbay, forecast=1, type=condition, property=text"}
+String   Condition2        "Condition [%s]"		        (Weather) {weather="locationId=thunderbay, forecast=2, type=condition, property=text"}
+
+
+
+// precipitation
+Number   Rain          "Rain [%.2f mm/h]"   (Weather) {weather="locationId=thunderbay, type=precipitation, property=rain"}
+Number   Rain_Inches   "Rain [%.2f in/h]"   (Weather) {weather="locationId=thunderbay, type=precipitation, property=rain, unit=inches"}
+Number   Snow          "Snow [%.2f mm/h]"   (Weather) {weather="locationId=thunderbay, type=precipitation, property=snow"}
+Number   Snow_Inches   "Snow [%.2f in/h]"   (Weather) {weather="locationId=thunderbay, type=precipitation, property=snow, unit=inches"}
+Number   Precip_Probability   "Precip probability [%d %%]"   (Weather) {weather="locationId=thunderbay, type=precipitation, property=probability"}
+// new total property in 1.8, only Wunderground
+
+// temperature
+Number   Temperature      "Temperature [%.2f °C]"       (Weather) {weather="locationId=thunderbay, type=temperature, property=current"}
+Number   Temperature_F    "Temperature [%.2f °F]"       (Weather) {weather="locationId=thunderbay, type=temperature, property=current, unit=fahrenheit"}
+Number   Temp_Feel        "Temperature feel [%.2f °C]"  (Weather) {weather="locationId=thunderbay, type=temperature, property=feel"}
+Number   Temp_Feel_F      "Temperature feel [%.2f °F]"  (Weather) {weather="locationId=thunderbay, type=temperature, property=feel, unit=fahrenheit"}
+Number   Temp_Dewpoint    "Dewpoint [%.2f °C]"          (Weather) {weather="locationId=thunderbay, type=temperature, property=dewpoint"}
+Number   Temp_Dewpoint_F  "Dewpoint [%.2f °F]"          (Weather) {weather="locationId=thunderbay, type=temperature, property=dewpoint, unit=fahrenheit"}
+
+// min and max values only available in forecasts
+Number   Temp_Min         "Temperature min [%.2f °C]"   (Weather) {weather="locationId=thunderbay, type=temperature, property=min"}
+Number   Temp_Min_F       "Temperature min [%.2f °F]"   (Weather) {weather="locationId=thunderbay, type=temperature, property=min, unit=fahrenheit"}
+Number   Temp_Max         "Temperature max [%.2f °C]"   (Weather) {weather="locationId=thunderbay, type=temperature, property=max"}
+Number   Temp_Max_F       "Temperature max [%.2f °F]"   (Weather) {weather="locationId=thunderbay, type=temperature, property=max, unit=fahrenheit"}
+String   Temp_MinMax_Today      "Min/Max [%s °C]"             (Weather) {weather="locationId=thunderbay, forecast=0, type=temperature, property=minMax"}
+String   Temp_MinMax_Tomorrow     "Min/Max [%s °C]"             (Weather) {weather="locationId=thunderbay, forecast=1, type=temperature, property=minMax"}
+String   Temp_MinMax_F    "Min/Max [%s °F]"             (Weather) {weather="locationId=thunderbay, type=temperature, property=minMax, unit=fahrenheit"}

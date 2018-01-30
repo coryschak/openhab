@@ -1,0 +1,96 @@
+
+rule "React on temperature (weather_forecasts0_temperature) change/update"
+when
+	Item weather_forecasts0_temperature changed
+then
+	var tempFahrenheit = (weather_forecasts0_temperature.state as DecimalType).intValue
+                var tempCelsius = (tempFahrenheit -  32)  *  5/9
+                tempCelsius = Math::round(tempCelsius.floatValue())
+                postUpdate(weather_forecasts0_temperature_Celcius, tempCelsius)
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+rule "Cycle Air when Hot Outside"
+when
+        Item Temperature received update
+then
+	logInfo("RULE.RUNNING.-09-", "### Cycle Air when Hot Outside ###")
+	//logInfo("RULE.RUNNING", "HVAC: Outside Temp: "+ Temperature.state+ ".")
+	//logInfo("RULE.RUNNING", "HVAC: Fan Min On Time: "+ settings_fanMinOnTime.state+ ".")
+{	
+	if(Temperature.state >= 24 && settings_fanMinOnTime.state != 60){
+		logInfo("RULE.RUNNING", "--> HVAC: Turning FAN ON")
+		sendCommand(settings_fanMinOnTime, 60)
+		pushover("HVAC: Circulating FAN. Out. Temp " + Temperature. state + ". Basement Temp " +BasementTemperature.state + ".")
+		}
+	else if(Temperature.state <= 22 && settings_fanMinOnTime.state == 60){
+		logInfo("RULE.RUNNING", "<-- HVAC: Turning FAN OFF")
+		sendCommand(settings_fanMinOnTime, 0)
+		pushover("HVAC: Disabling FAN. Out. Temp " + Temperature.state + ". Basement Temp " +BasementTemperature.state + ".")
+	}
+}		
+end
+
+/*
+rule "Turn AC ON if OFF and Hot Out"
+when
+        Item Temperature received update or
+		Item actualTemperature received update
+then
+	logInfo("RULE.RUNNING.-09-", "### Turn AC ON if OFF and Hot Out ###")
+{	
+	if(settings_hvacMode.state != "cool" ) {
+		logInfo("RULE.HVAC.Turn.AC.if.OFF", "--> AC is not enabled. Proceeding")
+		if(actualTemperature.state >=72){
+			logInfo("RULE.HVAC.Turn.AC.if.OFF", "--> House temperature is >=72F. Proceeding")
+			if(Temperature.state >= 24) {
+				logInfo("RULE.HVAC.Turn.AC.if.OFF", "--> Outside temperature is >=24C.")
+				logInfo("RULE.HVAC.Turn.AC.if.OFF", "--> Turning AC ON as Its hot out and house temperature is rising.")
+				pushover("TEST HVAC: Turning AC ON. Reason: AC is OFF, House =>72F & OUtside >=24C")
+			} else {
+			logInfo("RULE.HVAC.Turn.AC.if.OFF", "<-- Skipping: Outside Temperature is less then 24C")
+			}
+		} else {
+		logInfo("RULE.HVAC.Turn.AC.if.OFF", "<-- Skipping: Inside house Temp is colder then 72F")
+		}
+	} else {
+		logInfo("RULE.HVAC.Turn.AC.if.OFF", "<-- Skipping: HVAC is set to COOLING")
+	}
+}		
+end
+*/
+/*
+
+// rule supported in 1.9 onwards using the new ecobeeSetHold method signature:
+rule FanHold
+when
+  Item desiredFan received command
+then
+  logInfo("FanHold", "Setting fan hold to " + receivedCommand.toString)
+  val params = newLinkedHashMap(
+    'isTemperatureAbsolute'-> false,
+    'isTemperatureRelative' -> false,
+    'isCoolOff' -> true,
+    'isHeatOff' -> true,
+    'coolHoldTemp' -> 90,
+    'heatHoldTemp' -> 50,
+    'fan' -> receivedCommand.toString)
+  ecobeeSetHold("123456789012", params, null, null, null, null)
+end
+
+*/

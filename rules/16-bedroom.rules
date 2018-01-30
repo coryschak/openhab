@@ -1,0 +1,98 @@
+var Timer tBedroomMotion = null         //Declare bedroom timer and set initial state to NULL
+var Integer bedroom_timeout = 60        //Timeout in Seconds to auto-turn Lights off def. 60sec
+var Integer bedroom_reschedule = 120     //Reschedule timeout in seconds to turn lights off def. 120sec
+//***********************************************************************************************************************************************
+// 															OFFICE DOOR LIGHTING															*
+//***********************************************************************************************************************************************
+rule "Bedroom Motion Detected"
+when
+    Item vBedroom_PIR changed from 0 to 1
+then
+	logInfo("-16-Bedroom.R1", "### Bedroom Motion Detected ###")
+{	
+    if(vMotion_Override.state == OFF) {
+       // logInfo("-16-Bedroom.R1", "--> Motion Override Disabled. Proceeding with Motion Detection Rules")
+       // logInfo("-16-Bedroom.R1", "--> Previous State = {}%", (vBedroomLights.previousState(true, "mysql").state as DecimalType) )
+    	if(gPresent.state == ON) {	                    //someone home, lets make the PIR's useable. If no one is home lets ignore the dogs	
+            //if(vBedroom_PIR.state == 1) {               //1 = MOTION, 0 = No Motion
+                logInfo("-16-Bedroom.R1", "--> Motion Detected")
+                if(tBedroomMotion !== null) {           //Check Timer and Reschedule if active
+                    tBedroomMotion.reschedule(now.plusSeconds(bedroom_reschedule))
+			        logInfo("-16-Bedroom.R1", "--> Auto-OFF Timer Active. Rescheduling for {} seconds", bedroom_reschedule)
+                }
+                if(vBedroomLights.state == 0) {         
+                    logInfo("-16-Bedroom.R1", "--> Lights are OFF.")
+                        if(NightState.state == ON) {
+                               logInfo("-16-Bedroom.R1", "--> NightState == ON. Not Triggering Auto Lights")
+                        } else {
+                            sendCommand(vBedroomLights, 100)
+                            logInfo("-16-Bedroom.R1", "--> Turning Bedroom Lights ON: 100%. (Daylight Value)")
+                        }
+                }
+		    //} 
+	    }
+    } else {
+        logInfo("-16-Bedroom.R1", "<-- Motion Override Enabled. Ignoring PIR")
+    }
+}
+end	
+
+
+rule "Bedroom Lights Off Timer"
+when
+    Item vBedroomLights changed
+then
+logInfo("-16-Bedroom.R2", "### Bedroom Lights Off Timer ###")
+{ 
+   if(vLightAutoOffTimer_Override.state == OFF){
+        logInfo("-16-Bedroom.R2", "--> Bedroom Lights = {}%", vBedroomLights.state)
+        if(vBedroomLights.state != 0) {
+            if(tBedroomMotion === null) {
+                logInfo("-16-Bedroom.R2", "--> Lights turned ON. Creating OFF timer tBedroomMotion")
+                tBedroomMotion = createTimer(now.plusSeconds(bedroom_timeout)) [|
+                    if(vBedroom_PIR.state == 0) {
+                        sendCommand(vBedroomLights, 0)
+                        tBedroomMotion = null
+                        logInfo("-16-Bedroom.R2", "--> Timer Expired. Turning Lights off")
+                    } else {
+                        tBedroomMotion.reschedule(now.plusSeconds(60))
+                        logInfo("-16-Bedroom.R2", "--> Timer Expired but Bedroom Has Motion. Rescheduling Lights.")
+                    }
+                ]
+            } else {
+                tBedroomMotion.reschedule(now.plusSeconds(bedroom_reschedule))
+                logInfo("-16-Bedroom.R2", "--> Timer Active. Rescheduling tBedroomMotion")
+            }
+        } else if(vBedroomLights.state == 0){
+            logInfo("-16-Bedroom.R2", "--> Lights Turned Off. Checking for Active Timers")
+            if(tBedroomMotion !== null) {
+                logInfo("-16-Bedroom.R2", "--> Timer Active. Canceling")
+                tBedroomMotion.cancel()
+                tBedroomMotion = null
+            }
+        }
+    } else {
+        logInfo("-16-Bedroom.R2", "<-- Light Auto-off Timer OVERRIDE is enabled. Blocking Timer Creation")
+    }
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 															Auto Lighting When Dark															*
+//***********************************************************************************************************************************************
+/*rule "Auto Lighting When Dark"
+when
+	Item NightState changed from ON to OFF or 
+    Item NightState changed from OFF to ON or
+    Item gPresence changed from ON to OFF
+then
+	logInfo("-16-Bedroom.R2", "### Auto Lighting When Dark###")
+{	
+    if(NightState.state == ON && gPresence.state == ON && vBedroomLights.state == 0) {
+        logInfo("-16-Bedroom.R2", "ITS DARK, SOMONE IS HOME AND LIGHTS ARE OFF. TURNING LIGHTS ON TO %NightDimValue%")
+        //sendCommand(vBedroomLights, 1)
+    } 
+}
+end
+*/

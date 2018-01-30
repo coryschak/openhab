@@ -1,0 +1,24 @@
+/* -------------- */
+/*     Astro      */
+/* -------------- */
+Group Astro
+
+Number   	SunElevation  		"Elevation [%.1f �]"  <sun>  (Astro) { channel="astro:sun:local:position#elevation" }
+Switch   	NightState    		"Night"
+
+String      TimeOfDay
+String      PreviousTimeOfDay
+
+Switch      Sunrise_Event                               	(Astro){ channel="astro:sun:local:rise#end" }
+DateTime    Sunrise_Time    	"Sunrise [%1$tr]"   <sun>   (Astro) { channel="astro:sun:local:rise#end" }
+Switch      Sunset_Event                                	(Astro){ channel="astro:sun:local:set#start" }
+Number      Sun_Azimuth                               	(Astro){ channel="astro:sun:local:position#azimuth" }
+DateTime    Sunset_Time    		"Sunset [%1$tr]"    <sun>  (Astro) { channel="astro:sun:local:set#start" }
+Number      Daylight_Duration   "Daylight [%1 min]"   <sun>  (Astro) { channel="astro:sun:local:daylight#duration" }
+
+
+
+Number   		MoonElevation  		"Moon Elevation [%.1f �]"  	<moon>  (Astro) 		{ channel="astro:moon:local:position#elevation" }
+Number			MoonIllumination	"Moon illumination [%.1f]"	<moon> 	(Astro)			{ channel="astro:moon:local:phase#illumination"}
+DateTime        Moonrise_Time    	"Moonrise Start [%1$tr]"   	<moon>  (Astro) 		{ channel="astro:moon:local:rise#start" }
+Number			Moon_Phase      	"Moon Phase [%.1f]"	        <moon> 	(Astro)			{ channel="astro:moon:local:phase#full"}

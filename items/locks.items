@@ -1,0 +1,71 @@
+/* ---------- */
+/* Door Locks */
+/* ---------- */
+Group gLocks
+Group gLocks_Garage 	(gLocks)
+Group gLocks_House 		(gLocks)
+Group gLock_Status
+
+
+/* House Door Lock */
+Switch	 	vHouseLock					"House Lock  [MAP(lock.map):%s]"   <lock>					        {channel="zwave:device:160ec2a0602:node34:lock_door"}
+String 		vHouseLock_Status			"House Lock  [MAP(lock.map):%s]"	<lock>			(gLock_Status)
+Switch		vHouseLock_Proxy			"House Lock Proxy  [MAP(lock.map):%s]"              (gLocks_House)
+Number      vHouseLock_Battery      	"House Lock Battery [%d %%]"		<energy>    	(gBatteryStatus)	{channel="zwave:device:160ec2a0602:node34:battery-level"}
+Number		vHouseLock_Alarm			"House Lock Alarm [MAP(lock_alarm.map):%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node34:alarm_number"}
+String		vHouseLock_Alarm_Raw	    "House Lock: Alarm Raw [%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node34:alarm_raw"}
+Number		vHouseLock_Access			"House Lock Alarm Access [%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node34:notification_access_control"}
+
+
+//---------------------------------------------------
+//Items for a lock if controlled though SMARTTHINGS:
+//Switch	 	vHouseLock					"House Lock  [MAP(lock.map):%s]"            		<lock>			(gLocks_House)		{mqtt=">[openhab:smartthings/vHouseLock/lock:state:ON:locked], >[openhab:smartthings/vHouseLock/lock:state:OFF:unlocked]"}
+//String	 	vHouseLock_Status			"House Lock  [MAP(lock.map):%s]"            		<lock>			(gLock_Status)		{mqtt="<[openhab:smartthings/vHouseLock/lock:state:MAP(lock.map)]"}
+//Number      vHouseLock_Battery      	"House Lock Battery [%d %%]"		<energy>    	(gBatteryStatus)	{mqtt="<[openhab:smartthings/vHouseLock/battery:state:default]"}
+
+/* Garage Door Lock */
+//Switch	 	vGarageLock					"Garage Lock  [%s]"            		<lock>			(gLocks_Garage)		{mqtt=">[openhab:smartthings/vGarageLock/lock:state:ON:locked], >[openhab:smartthings/vGarageLock/lock:state:OFF:unlocked]"}
+//String	 	vGarageLock_Status			"Garage Lock  [%s]"            		<lock>			(gLock_Status)		{mqtt="<[openhab:smartthings/vGarageLock/lock:state:MAP(lock.map)]"}
+//Number      vGarageLock_Battery      	"Garage Lock Battery [%d %%]"		<energy>    	(gBatteryStatus)	{mqtt="<[openhab:smartthings/vGarageLock/battery:state:default]"}
+//---------------------------------------------------
+
+
+
+Switch	 	vGarageLock					"Garage Lock  [MAP(lock.map):%s]"   <lock>					{channel="zwave:device:160ec2a0602:node29:lock_door"}
+String 		vGarageLock_Status			"Garage Lock  [MAP(lock.map):%s]"	<lock>			(gLock_Status)
+Switch		vGarageLock_Proxy			"Garage Lock Proxy  [MAP(lock.map):%s]"             (gLocks_Garage)
+Number      vGarageLock_Battery      	"Garage Lock Battery [%d %%]"		<energy>    	(gBatteryStatus)	{channel="zwave:device:160ec2a0602:node29:battery-level"}
+Number		vGarageLock_Alarm			"Garage Lock Alarm [MAP(lock_alarm.map):%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node29:alarm_number"}
+//String		vGarageLock_Alarm_Raw			"Garage Lock Alarm [MAP(lock_alarm.map):%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node29:alarm_number"}
+String		vGarageLock_Alarm_Raw	"Garage Lock: Alarm Raw [%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node29:alarm_raw"}
+Number		vGarageLock_Access			"Garage Lock Alarm Access [%s]"			<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node29:notification_access_control"}
+
+/* Garage Rear Door Lock */
+Switch	 	vGarageRearLock					"Garage Rear Lock  [MAP(lock.map):%s]"            		<lock>			(gLocks_Garage)		{mqtt=">[openhab:smartthings/vGarageRearLock/lock:state:ON:locked], >[openhab:smartthings/vGarageRearLock/lock:state:OFF:unlocked]"}
+String	 	vGarageRearLock_Status			"Garage Rear Lock  [MAP(lock.map):%s]"            		<lock>			(gLock_Status)		{mqtt="<[openhab:smartthings/vGarageRearLock/lock:state:MAP(lock.map)]"}
+Number      vGarageRearLock_Battery      	"Garage Rear Lock Battery [%d %%]"			<energy>    	(gBatteryStatus)	{mqtt="<[openhab:smartthings/vGarageRearLock/battery:state:default]"}
+
+
+//Switch	 	vGarageLock					"Garage Lock  [%s]"            		<lock>			(gLocks_Garage)		{channel="zwave:device:160ec2a0602:node16:lock_door"}
+//String	 	vGarageLock_Status			"Garage Lock  [%s]"            		<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node16:lock_door"}
+
+//Switch	 	vGarageLock_Rear					"Garage Rear Lock  [%s]"            		<lock>			(gLocks_Garage)		{channel="zwave:device:160ec2a0602:node17:lock_door"}
+//String	 	vGarageLock_Rear_Status			"Garage Rear Lock  [%s]"            		<lock>			(gLock_Status)		{channel="zwave:device:160ec2a0602:node17:lock_door"}
+//Number      vGarageLock_Battery      	"Garage Lock Battery [%d %%]"		<energy>    	(gBatteryStatus)	{channel="zwave:device:160ec2a0602:node16:lock_door""}
+/*
+Switch          House_MainDoor_Lock         "House lock control"              		<none>  	(gLocks_House)    		{channel="zwave:device:159629455c6:node10:lock_door"}
+Contact         House_MainDoor_Status       "House lock status [%s]"          		<lock>      (gLock_Status)    		{channel="zwave:device:159629455c6:node10:lock_door"}
+Number          House_MainDoor_Battery      "House lock battery level [%d %%]"		<energy>                			{channel="zwave:device:159629455c6:node10:lock_door" }
+*/
+/*Garage Door (Main) */
+/*
+Switch 			Garage_MainDoor_Lock		"Garage lock control" 					<none> 		(gLocks_Garage) 		{channel="8:command=door_lock"}
+Contact 		Garage_MainDoor_Status		"Garage lock status [%s]" 				<lock> 		(gLock_Status)			{channel="8:command=door_lock,refresh_interval=120"}
+Number 			Garage_MainDoor_Battery 	"Garage lock battery level [%d %%]" 	<energy>							{channel="8:command=battery,refresh_interval=43200" }
+*/
+/* Garage Door  (Rear) */
+/*
+Switch 			Garage_RearDoor_Lock 		"Garage Rear lock control"				<none> 		(gLocks_Garage)			{channel="zwave:device:159629455c6:node9:lock_door"}
+Contact 		Garage_RearDoor_Status		"Garage Rear lock status [%s]" 			<lock> 		(gLock_Status)			{channel="zwave:device:159629455c6:node9:lock_door"}
+Number 			Garage_RearDoor_Battery 	"Garage Rear lock battery level [%d %%]" <energy>							{channel="zwave:device:159629455c6:node9:lock_door" }
+*/

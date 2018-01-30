@@ -1,0 +1,13 @@
+rule "Patio Door Triggers RGB Light"
+when
+        Item vMBR_PIR changed 
+then
+	logInfo("14-RGB_Lights", "### Testing Color LED on Door Sensor ###")
+	var hsb = HSBType.fromRGB(0,255,0)
+	if(vMBR_PIR.state == 1){
+		sendCommand(vLEDStrip_color,hsb)
+	} else { 
+		var hsb = HSBType.fromRGB(255,0,0)
+		sendCommand(vLEDStrip_color,hsb)
+	}
+end

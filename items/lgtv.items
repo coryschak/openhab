@@ -1,0 +1,14 @@
+Switch LgTvPower                        "Power Command"                 (GF_Living)     {lgtv="ON:livingroom:POWER"}
+Switch LgTvMute                         "Mute"                          (GF_Living)     {lgtv="ON:livingroom:KEY_MUTE, OFF:livingroom:KEY_MUTE"}
+Number LgTvVolume                       "lgVolume [%.1f]"               (GF_Living)     {lgtv="INIT:livingroom:VOLUME_CURRENT, INCREASE:livingroom:VOLUME_UP, DECREASE:livingroom:VOLUME_DOWN, *:livingroom:VOLUME_SET"}
+Number LgTvChannel                      "Channel [%.1f]"                (GF_Living)     {lgtv="INIT:livingroom:CHANNEL_CURRENTNUMBER, INCREASE:livingroom:CHANNEL_UP, DECREASE:livingroom:CHANNEL_DOWN, *:livingroom:CHANNEL_SET" }
+String LgTvChannelName                  "Channelname [%s]"              (GF_Living)     {lgtv="INIT:livingroom:CHANNEL_CURRENTNAME"}
+String LgTvGetChannels                  "getchannels [%s]"              (GF_Living)     {lgtv="INIT:livingroom:GET_CHANNELS, ON:livingroom:GET_CHANNELS"}
+String LgTvGetApps                      "getapps [%s]"                  (GF_Living)     {lgtv="INIT:livingroom:GET_APPS, ON:livingroom:GET_APPS"}
+String LgTvAppExecute                   "excuteapp"                     (GF_Living)     {lgtv="*:livingroom:APP_EXECUTE"}
+String LgTvAppTerminate                 "terminateapp"                  (GF_Living)     {lgtv="*:livingroom:APP_TERMINATE"}
+Switch LgTvConnStatus                   "connstatus "                   (GF_Living)     {lgtv="*:livingroom:CONNECTION_STATUS"}
+String LgTvBrowserRemote                "livingroom url"                (GF_Living)     {lgtv="*:livingroom:BROWSER_URL"}
+Number LgTvInfoMode                     "infomode [%.1f]"               (GF_Living)
+String LgTvAVMODE                       "AV Mode %s"                                     {lgtv="INIT:livingroom:KEY_AVMODE"}
+String LgTvExternalInput                       "External Input %d"                                     {lgtv="INIT:livingroom:KEY_EXTERNALINPUT"}

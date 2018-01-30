@@ -1,0 +1,154 @@
+var int percent = 0	
+
+
+rule "MBR Headboard Scene"
+    when
+        Item vMBR_HeadboardPots_Scene received update
+    then
+    logInfo("RULE.RUNNING.-08-", "### MBR Headboard Scene ###")
+    {
+		switch(vMBR_HeadboardPots_Scene.state) {
+			/*ON*/
+			case 1.0 : {							/* Single Tap ON */
+				logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Single Press ON")
+
+			    }
+			case 1.3 : {							/* Double Tap ON */
+			    logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Double Press ON")
+
+				if(vMBR_HeadboardPots.state == 0){
+					logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "--> Turning Lights ON and Syncing Switches")
+					if(NightState.state == ON) {
+						sendCommand(vMBR_HeadboardPots, 1)
+						sendCommand(vMBR_CenterPots, 1)
+					} else { 
+						sendCommand(vMBR_HeadboardPots, 100)
+						sendCommand(vMBR_CenterPots, 100)
+					}
+					postUpdate(MBRdimmerSync, 2)
+					
+					} else {
+						logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "--> Syncing House Dim Value to Garage and Syncing")
+						percent = ((vMBR_HeadboardPots.state as DecimalType)).intValue
+						sendCommand(vMBR_CenterPots, percent)
+						postUpdate(MBRdimmerSync, 2)
+					}
+				//DOUBLE TAPPED WHEN DIMMER SYNC IS ENABLED
+				//BREAKS THE SYNC.
+				if(MBRdimmerSync.state == 2){
+					logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "--> Dbl.TAP --> Disabling Dimmer SYNC")
+					postUpdate(MBRdimmerSync, 0)
+				}
+				
+			}
+			case 1.4 : { 							/* Tripple Tap ON */
+			   	logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Tripple Press ON")
+
+			}
+			/*OFF*/
+			case 2.0 : {							/* Single Tap OFF */
+				logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Single Press OFF")
+			    }
+			case 2.3 : {							/* Double Tap OFF */
+			    logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Double Press OFF")
+				sendCommand(vMBR_HeadboardPots, 0)
+			    sendCommand(vMBR_CenterPots, 0)
+				postUpdate(MBRdimmerSync, 0)
+			}
+			case 2.4 : { 							/* Tripple Tap OFF */
+			   logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Tripple Press OFF")
+			   sendCommand(vFrontHouseSoffit, 0)
+			   sendCommand(vFrontGarageSoffit, 0)
+			}
+		}	
+	}
+    end
+
+//***********************************************************************************************************************************************
+// 												SYNCING OF HEADBOARD AND CENTER POT LIGHTS				 										*
+//***********************************************************************************************************************************************
+
+/* Center Pot Light Dimmer Syncing if SCENE has been Selected */	
+rule "MBR Headboard Scene: Sync based on SCENE"
+    when
+        Item vMBR_HeadboardPots received update
+    then
+		logInfo("RULE.RUNNING.-04-", "### MBR Headboard Scene: Sync based on SCENE ###")
+		percent = ((vMBR_HeadboardPots.state as DecimalType)).intValue
+		if(now.getHourOfDay >= 0 && now.getHourOfDay <= 7 && vMBR_HeadboardPots.state != 0) {
+			vMBR_HeadboardPots.sendCommand(0)
+		} else {
+			switch(MBRdimmerSync.state) {
+				case 0 : {
+					/* Single Press - No action for local light control*/
+					//logInfo("RULE.LIGHTING.Light_House_Soffit", "--> dimmerSync = 0.")	
+					}
+				case 2 : {
+				// WHen dimmerSync = 2. Send same dimness value to garage soffit dimmer.
+					sendCommand(vMBR_CenterPots, percent)
+				}
+				case 3 : {
+				}
+			}
+		}
+		if (vMBR_HeadboardPots.state == 0) {
+			postUpdate(MBRdimmerSync, 0)
+		}
+    end
+
+
+
+
+	
+	
+rule "MBR Center Pot Light Scene"
+    when
+        Item vMBR_CenterPots_Scene received update
+    then
+    logInfo("RULE.RUNNING.-08-", "### MBR Center Pot Light Scene ###")
+    {
+		switch(vMBR_CenterPots_Scene.state) {
+			/*ON*/
+			case 1.0 : {							/* Single Tap ON */
+				logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Single Press ON")
+					if(NightState.state == OFF) {
+						vOfficeLights.sendCommand(100)
+					} else {
+						if(now.getHourOfDay >= 19 || now.getHourOfDay <= 7 ) {	//Michael is sleeping 7:00PM - 7:00AM
+							if(vOfficeDoor.state == OPEN && vMBRdoor.state == OPEN){
+								vMBR_CenterPots.sendCommand(1)
+							} else if (vOfficeDoor.state == CLOSED || vMBRdoor.state == CLOSED) {
+								vMBR_CenterPots.sendCommand(5)
+							}
+						}
+			   		}
+			}
+			case 1.3 : {							/* Double Tap ON */
+			    logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Double Press ON")
+				sendCommand(vMBR_HeadboardPots, 100)
+			    sendCommand(vMBR_CenterPots, 100)		
+				
+			}
+			case 1.4 : { 							/* Tripple Tap ON */
+			   	logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Tripple Press ON")
+
+			}
+			/*OFF*/
+			case 2.0 : {							/* Single Tap OFF */
+				logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Single Press OFF")
+			    }
+			case 2.3 : {							/* Double Tap OFF */
+			    logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Double Press OFF")
+				sendCommand(vMBR_HeadboardPots, 0)
+			    sendCommand(vMBR_CenterPots, 0)
+			}
+			case 2.4 : { 							/* Tripple Tap OFF */
+			   logInfo("RULE.LIGHTING.vMBR_HeadboardPots", "Tripple Press OFF")
+			   sendCommand(vFrontHouseSoffit, 0)
+			   sendCommand(vFrontGarageSoffit, 0)
+			}
+		}
+    }
+    end
+
+

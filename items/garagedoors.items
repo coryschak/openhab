@@ -1,0 +1,20 @@
+/* -------------- */
+/*     Garage Doors    */
+/* -------------- */
+
+
+/* Front Garage Door 12' */
+Switch GarageDoorFront12Switch         "Front 12' Garage Door Switch"          								 	{myq="0"}
+Contact GarageDoorFront12Contact       "Front 12' Garage Door String [%s]" 	<garagedoor> (gSoffitDoorSensors) 	{myq="0"}
+String GarageDoorFront12String         "Front 12' Garage Door Contact [%s]" <garagedoor>         				{myq="0"}
+Rollershutter GarageDoorFront12Shutter "Front 12' Garage Door Shutter "          								{myq="0"}
+/* Front Garage Door 16' */
+Switch GarageDoorFront16Switch         "Front 16' Garage Door Control"           								{myq="1"}
+Contact GarageDoorFront16Contact       "Front 16' Garage Door [%s]" 		<garagedoor> (gSoffitDoorSensors)	{myq="1"}
+String GarageDoorFront16String         "Front 16' Garage Door [%s]"  		<garagedoor>         				{myq="1"}
+Rollershutter GarageDoorFront16Shutter "Front 16' Garage Door Open"           									{myq="1"}
+/* Rear Garage Door 12' */
+Switch GarageDoorRear12Switch         "Rear 12' Garage Door Control"           									{myq="2"}
+Contact GarageDoorRear12Contact       "Rear 12' Garage Door [%s]" 			<garagedoor> 						{myq="2"}
+String GarageDoorRear12String         "Rear 12' Garage Door [%s]"  			<garagedoor>         				{myq="2"}
+Rollershutter GarageDoorRear12Shutter "Rear 12' Garage Door Open"           									{myq="2"}

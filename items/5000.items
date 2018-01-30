@@ -1,0 +1,73 @@
+//TED5000 Cost Conversion Groups
+Group:Number PowerCostToConvert // (TED Power Cost Values) Divide all members by 100 and output them into _div item (divided)
+Group PowerCostConverted
+
+Group:Number PowerWattToConvertKwh // (TED Power Watt Values) Divide all members by 1000 and output them into _div item (divided) to get kWH
+Group PowerkWhConverted
+
+/* -------------- */
+/*     TED5000    */
+/* -------------- */
+
+/* Current Power Useage */
+Number Power_Now  								"Current Power [%.0f Watts]"  		<energy> 	(Persistence)	{theenergydetective="gw1:Power.MTU1.PowerNow"}
+//Number Power_Range_Now  						"Current Range Power [%.0f Watts]"  <energy> 		{theenergydetective="gw1:Power.MTU2.PowerNow"}
+//Number Power_Well_Now 							"Current Well Power [%.0f Watts]"  	<energy> 		{theenergydetective="gw1:Power.MTU3.PowerNow"}
+//Number Power_AC_Now  							"Current AC Power [%.0f Watts]"  	<energy> 		{theenergydetective="gw1:Power.MTU4.PowerNow"}
+
+//* Power *
+Number Power_PowerTDY   						"Power Today [%.0f Watts]"  		<energy> 	(PowerWattToConvertKwh, Persistence)	{theenergydetective="gw1:Power.MTU1.PowerTDY"}
+Number Power_PowerMTD   						"Power Month [%.0f Watts]"  		<energy> 	(PowerWattToConvertKwh, Persistence)	{theenergydetective="gw1:Power.MTU1.PowerMTD"}
+//Number Power_PowerProj   						"Power Projected [%.0f Watts]"  	<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.PowerProj"}
+//Number Power_PowerAvg  							"Power Average [%.0f Watts]"  		<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.PowerAvg"}
+//Number Power_PeakTdy  							"Power Peak Today [%.0f Watts]"  	<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.PeakTdy"}
+//Number Power_PeakMTD  							"Power Peak Month [%.0f Watts]"  	<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.PeakMTD"}
+//Number Power_MinTdy  							"Power Min Today [%.0f Watts]"  	<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.MinTdy"}
+//Number Power_MinMTD  							"Power MIn Month [%.0f Watts]"  	<energy> 	(PowerWattToConvertKwh)	{theenergydetective="gw1:Power.MTU1.MinMTD"}
+//divide by 100 to convert watts to kwh
+
+Number Power_PowerTDY_div   					"Power Today [%.0f kWh]"  		<energy> 	(PowerkWhConverted, Persistence)
+Number Power_PowerMTD_div   					"Power Month [%.0f kWh]"  		<energy> 	(PowerkWhConverted, Persistence)
+//Number Power_PowerProj_div   					"Power Projected [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+//Number Power_PowerAvg_div  						"Power Average [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+//Number Power_PeakTdy_div  						"Power Peak Today [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+//Number Power_PeakMTD_div  						"Power Peak Month [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+//Number Power_MinTdy_div  						"Power Min Today [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+//Number Power_MinMTD_div 						"Power MIn Month [%.0f kWh]"  	<energy> 	(PowerkWhConverted)
+
+
+
+
+/* Current Power converted to TOU */
+Number Power_Now_OnPeak  						"Current Power On Peak [%.0f Watts]"  		<energy> 	(Persistence)	
+Number Power_Now_MidPeak  						"Current Power Mid Peak [%.0f Watts]"  		<energy>    (Persistence)
+Number Power_Now_OffPeak 						"Current Power Off Peak [%.0f Watts]"  		<energy>    (Persistence)
+
+/*Cost*/
+//Number Power_CostNow  					"Current [$%.0f ]"  				<energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Cost.MTU1.CostNow"}
+Number Power_CostTDY 					"Today [$%.0f]"  					<energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Cost.MTU1.CostTDY"}
+//Number Power_CostMTD  					"This Month [$%.0f]"  				<energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Cost.MTU1.CostMTD"}
+//Number Power_CostProj  					"Projection for This Month [$%.0f]" <energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Cost.MTU1.CostProj"}
+//Number Power_CostAvg    				"Average/Day [$%.0f]"  				<energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Cost.MTU1.CostAvg"}
+
+/* Cost Converted to Dollars, Dividied by zero from rule*/
+//Number Power_CostNow_div  				"Current [$%.2f ]"  				<energy> 	(PowerCostConverted)
+//Number Power_CostTDY_div 				"Today [$%.2f]"  					<energy> 	(PowerCostConverted)
+//Number Power_CostMTD_div  				"This Month [$%.2f]"  				<energy> 	(PowerCostConverted)
+//Number Power_CostProj_div  				"Projection for This Month [$%.2f]" <energy> 	(PowerCostConverted)
+//Number Power_CostAvg_div  				"Average/Day [$%.2f]"  				<energy> 	(PowerCostConverted)
+
+/* TOU*/
+Number Power_CurrentTOU 				"Current TOU [MAP(TOU.map):%s]"  				<energy> 							{theenergydetective="gw1:Utility.CurrentTOU"}
+//String Power_CurrentTOUDescription 		"Current TOU Desc [%d]"  			<energy> 							{theenergydetective="gw1:Utility.CurrentTOUDescription"}
+
+
+/* Total Power Consumed Today per MTU */
+//Number Power_Main_TDY  					"Total Power Today [%.0f Watts]"  	<energy> 	(Persistence)		{theenergydetective="gw1:Power.MTU1.PowerTDY"}
+//Number Power_Range_TDY  				"Range Used [%.0f Watts]"  			<energy> 		{theenergydetective="gw1:Power.MTU2.PowerTDY"}
+//Number Power_Well_TDY  					"Well Used [%.0f Watts]"  			<energy> 		{theenergydetective="gw1:Power.MTU3.PowerTDY"}
+//Number Power_AC_TDY  					"AC Used [%.0f Watts]"  			<energy> 		{theenergydetective="gw1:Power.MTU4.PowerTDY"}
+
+
+//* Voltage *
+Number Power_Voltage_Now				"Current Voltage [$%.0f]"  			<energy> 	(PowerCostToConvert)	{theenergydetective="gw1:Voltage.MTU1.VoltageNow"}

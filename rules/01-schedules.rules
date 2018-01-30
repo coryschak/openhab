@@ -1,0 +1,199 @@
+import org.eclipse.smarthome.core.library.types.DecimalType
+/* CRON Syntax */
+/* Second | Minute | Hours | Day of Month | Month | Day of Week | Year (Optional) */
+
+
+var int outsideTemp = 0
+var int isChristmas = 0
+var int blockheaterActive = 0
+
+//***********************************************************************************************************************************************
+// 													BLOCK HEATER ON/OFF RULE																	*
+//													When: 6:00am / Monday-Friday / Dec-Feb														*
+//													Temperature: -20C or Colder																	*
+//***********************************************************************************************************************************************
+rule "Block Heater: ON"
+    when 
+		Time cron "0 0 6 ? DEC,JAN,FEB MON-FRI"
+    then
+    logInfo("-01-Schedules", "### Block Heater: ON ###")
+    {
+		outsideTemp = ((Temperature.state as DecimalType)).intValue
+		if (outsideTemp <= -20) {
+			logInfo("RULE.BLOCKHEATER", "Outdoor Temp is " + outsideTemp + ". Turning Block heater ON")
+			sendCommand(Rcpt_Garage, ON)
+			pushover("Block Heater Turned ON. Outdoor Temp: " + outsideTemp + "C")
+			blockheaterActive = 1
+			}
+    }
+    end
+	
+rule "Block Heater: OFF"
+    when 
+		Time cron "0 50 7 ? DEC,JAN,FEB MON-FRI" 
+    then
+    logInfo("-01-Schedules", "### Block Heater: OFF ###")
+    {
+	    if(blockheaterActive == 1){
+			sendCommand(Rcpt_Garage, OFF)
+			pushover("Block Heater: OFF")
+			blockheaterActive = 0	
+		}
+	}
+end
+	
+//***********************************************************************************************************************************************
+// 													AUTO LOCK DOORS @ MIDNIGHT																	*
+//***********************************************************************************************************************************************
+rule "Auto Lock Doors at Midnight"
+    when
+		Time cron "0 0 0 * * ?" 
+    then
+    logInfo("-01-Schedules", "### Auto Lock Doors at Midnight ###")
+    {
+		gLocks?.allMembers.filter(s | s.state==OFF).forEach[item|
+			pushover("Auto-Locking: " + item.name)
+			sendCommand(item,ON)
+			]
+	}
+	end	
+	
+//***********************************************************************************************************************************************
+// 													NOTIFY DOOR LEFT OPEN LONGER THAN 45MINS													*
+//***********************************************************************************************************************************************
+rule "CRON: Notify if Door is open when no one is present. Runs every minute "
+when
+        Time cron "0 0/1 * * * ?"
+then
+logInfo("-01-Schedules", "### CRON: Notify if Door is open when no one is present. Runs every minute  ###")
+{
+	if(gPresent.state == OFF){
+        gRemindDoorSensors.members.filter[s|s.state == OPEN]?.forEach[ door |
+                pushover("!!!ALERT!!! Door Left OPEN: " + door.name)
+        ]
+	}
+}
+end
+
+
+
+//***********************************************************************************************************************************************
+// 													NOTIFY DOOR LEFT OPEN LONGER THAN 45MINS													*
+//***********************************************************************************************************************************************
+rule "Reminder for doors that are open for over 45mins that we want to know any time"
+when
+        Time cron "0 0/5 * * * ?"
+then
+logInfo("-01-Schedules", "### Reminder for doors that are open for over 45mins that we want to know any time ###")
+{
+        gRemindDoorSensors.members.filter[s|s.state == OPEN && !s.changedSince(now.minusMinutes(15))]?.forEach[ door |
+                pushover("ALERT: Door left OPEN for over 45mins: " + door.name)
+        ]
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													TURN OFF DEVICES AT MIDNIGHT & SUNRISE														*
+/* CRON Syntax */
+/* Second | Minute | Hours | Day of Month | Month | Day of Week | Year (Optional) */
+//***********************************************************************************************************************************************
+
+rule "TURN OFF DEVICES AT MIDNIGHT & SUNRISE"
+when
+	Time cron "0 0 0 * * ?" or 				//run at Midnight
+	Item NightState changed from ON to OFF	//run at Sunrise
+then
+logInfo("-01-Schedules", "### TURN OFF DEVICES AT MIDNIGHT & SUNRISE ###")
+{
+	var String triggeredTime = null
+	//BUILD NOTIFICATION MESSAGE TO SAY WHEN
+	//THE ROUTINE IS RUNNING: SUNRISE OR MIDNIGHT
+	if(NightState.state == OFF) {
+		triggeredTime = "Sunrise"
+	} else {
+		triggeredTime = "Midnight"
+	}
+	//LOOP THOUGH gOFFatMidnight
+	//TURN OFF ALL LIGHTS/SWITCHES
+		var Number sendMessage = 0
+		val StringBuilder BuildMessage = new StringBuilder
+		gOFFatMidnight.members.filter[s|s.state == ON || s.state > 0].forEach[ item |
+			BuildMessage.append("- "+item.name+ "\n")
+			Thread::sleep(300)
+			if(item.state == ON){ 	//Locks and Switches/Outlets
+				logInfo("-01-Schedules", "--> "+triggeredTime+". Switch Received sendCommand(OFF) for {} = {}%", item.name, item.state)
+				item.sendCommand(OFF)
+			} else {				//Dimmers
+				logInfo("-01-Schedules", "--> "+triggeredTime+". Dimmer Received sendCommand(0) for {} = {}%", item.name, item.state)
+				item.sendCommand(0)
+			}
+			sendMessage = 1
+       ]
+
+		//CATCH A SOFFIT DOOR TIMER RUNNING RIGHT WHEN MIDNIGHT ROLLS AROUND AND SET RESTORE STATE TO OFF
+		if(gSoffitRestore.state != -1) {
+			gSoffitRestore.postUpdate(-1)
+			BuildMessage.append("* Soffit Timer Active. Setting gSoffitRestore to: -1 (val=0%)\n")
+			logInfo("-01-Schedules", "--> Door Soffit Timer Active. Setting gSoffitRestore to: -1 (val=0%)")
+		}
+
+		if(sendMessage == 1) {
+			val message = "It's "+triggeredTime+".\nTurning off the following lights:\n\n" + BuildMessage+"\n"
+			pushover(null, null, message, null, "@"+triggeredTime, null, null, 0, null) 	 
+		}
+
+}
+end
+
+
+rule "Auto Lighting: Front Soffit Lighting"
+when
+	Item NightState changed from OFF to ON
+then
+	logInfo("RULE.RUNNING.-04-", "### Auto Lighting: Front Soffit Lighting ###")
+{	
+	vFrontGarageSoffit.sendCommand(8)
+	Thread::sleep(500)
+	vFrontHouseSoffit.sendCommand(8)
+	Thread::sleep(500)
+	pushover(null, null, "Night Soffit Lighting ON:\n\n- vFrontGarageSoffit = "+vFrontGarageSoffit.state+"%\n- vFrontHouseSoffit = "+vFrontHouseSoffit.state+"%", null, "Auto Soffit Lighting", null, null, 0, null) 
+}
+end
+
+	
+rule "Christmas Lights ON"
+    when 
+		Time cron "0 30 17 1-28 DEC ?" 
+    then
+		sendCommand(gChristmasLights, ON)		//garage christmas lights
+		pushover("Christmas Lights: ON")
+		isChristmas = 1
+    end
+
+rule "Christmas Lights OFF"
+    when
+        Time cron "0 30 21 1-28 DEC ?"
+    then
+		sendCommand(gChristmasLights, OFF)
+        pushover("Christmas Lights: OFF")
+		isChristmas = 0    
+end
+    
+    
+rule "Morning Christmas Lights ON"
+    when
+		Time cron "0 25 7 1-28 DEC ?" 
+    then
+		sendCommand(gChristmasLights, ON)
+		pushover("Morning Outside Lights: ON")
+    end
+
+rule "Morning Christmas Lights OFF"
+    when
+        Time cron "0 48 7 1-28 DEC ?"
+    then
+		sendCommand(gChristmasLights, OFF)
+        pushover("Morning Outside Lights: OFF")
+    end
+

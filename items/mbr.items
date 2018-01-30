@@ -1,0 +1,4 @@
+Number 			MBRdimmerSync 						"What lights to Sync?"						<light>
+
+Number	 	vMBR_PIR               "Master Bedroom PIR [%s]"      <motion>		 	{mqtt="<[openhab:house/MBR/motion:state:default"}
+Contact	 	vMBRdoor                "MBR Door [%s]"               <door>		 (gDoorSensors)	{mqtt="<[openhab:house/MBR/door:state:default"}

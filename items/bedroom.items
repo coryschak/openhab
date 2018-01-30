@@ -1,0 +1,8 @@
+//office door sensor
+Contact	 	vBedroomDoor                 "Bedroom Door [%s]"                      <door>		 (gDoorSensors)	{mqtt="<[openhab:house/BR/door:state:default"}
+Contact	 	vBedroom_ClosetDoor_Left     "Bedroom Closet Door (Left) [%s]"        <door>		 (gDoorSensors)	{mqtt="<[openhab:house/BR/closetdoor_left:state:default"}
+Contact	 	vBedroom_ClosetDoor_Right    "Bedroom Closet Door (Right) [%s]"       <door>		 (gDoorSensors)	{mqtt="<[openhab:house/BR/closetdoor_right:state:default"}
+Number	 	vBedroom_PIR                      "Bedroom PIR [%s]"                  <motion>		 {mqtt="<[openhab:house/BR/motion:state:default"}
+
+Dimmer	    vBedroomLights	"Bedroom Pot Lights[%d %%]" 		<light>		(gOFFWhenNoPresence, gOFFatMidnight, gDimmers, gLights) 	{ channel="zwave:device:160ec2a0602:node36:switch_dimmer" }
+String   devBedroomDoor               "Bedroom Door Test Contact"

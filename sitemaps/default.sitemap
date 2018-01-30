@@ -1,0 +1,230 @@
+sitemap default label="Home Automation"
+{
+	Frame label="Global Overrides" {
+	Switch item=vAutoLock_Override mappings=[OFF="Allow Auto-Lock", ON="Prevent Auto-Locking"]
+	Switch item=vPresence_Override mappings=[OFF="Allow Presence", ON="Prevent Presence Rules"]
+	Switch item=vDoorOpenLights_Override mappings=[OFF="Allow Door Lighting", ON="Prevent Door Lighting"]
+	Switch item=vLightAutoOffTimer_Override mappings=[OFF="Allow PIR Light Timers", ON="Prevent PIR Timers"]
+	//Text item=vOfficeDoor
+	//Text item=vOffice_ClosetDoor_Left
+	//Text item=vOffice_ClosetDoor_Right
+	Switch item=vTest
+	Switch item=NightState
+	//Colorpicker item=vLEDStrip_color icon="colorwheel"
+	//Slider item=vLEDStrip_power icon="slider" switchSupport
+	//Text item=Temperature
+	//Text item=runtime_desiredFanMode
+	//Text item=settings_fanMinOnTime
+	//Switch item=vOfficeOutlet
+	//Text item=vPatioDoor1
+	//Slider item=vEntranceStairLights icon="slider" switchSupport
+	//Slider item=vBedroomCenterPots icon="slider" switchSupport
+	//Text item=AV_Display
+	//Switch item=AV_SpeakerA
+	//Default item=KitchenControl
+    //Slider item=KitchenVolume icon=soundvolume
+	}
+		Text label="Lock Control" icon="lock" {
+			 Frame label="House Main Door" {
+                Switch  item=vHouseLock_Proxy label="Lock Control"  mappings=[ON=Lock, OFF=Unlock]
+                Text item=vHouseLock_Alarm
+                Text item=vHouseLock_Battery
+				Text item=vHouseDoor
+                }
+				Frame label="Garage Main Door" {  
+					Switch item=vGarageLock_Proxy label="Lock Proxy Control"  mappings=[ON=Lock, OFF=Unlock]
+					Text item=vGarageLock_Alarm
+					Text item=vGarageLock_Battery
+					Text item=vGarageDoor
+				}
+				Frame label="Garage Rear Door" {
+					Switch item=vGarageRearLock label="Lock Control"  mappings=[ON=Lock, OFF=Unlock]
+					Text item=vHouseLock_Status
+					Text item=vHouseLock_Battery
+					//Text item=vGarageRearDoor
+				}
+			}
+		Text label="Soffit Lighting" icon="light" {
+				Frame label="House" {
+					Slider item=vFrontHouseSoffit icon="slider" switchSupport
+					Slider item=Light_House_Soffit icon="slider" switchSupport
+				}
+				Frame label="Garage" {
+					Slider item=vFrontGarageSoffit icon="slider" switchSupport
+					Slider item=vSideGarageSoffit icon="slider" switchSupport
+				}
+				Frame label="Restore Values" {
+					Text item=vFrontHouseSoffit_Restore
+					Text item=Light_House_Soffit_Restore 
+					Text item=vFrontGarageSoffit_Restore
+					Text item=vSideGarageSoffit_Restore
+				}
+				Frame label="Light Syncing" {
+					Switch item=dimmerSync mappings=[0=None, 2="House & Garage", 3="ALL"]
+					Switch item=AllowLightsDaylight mappings=[ON=NO, OFF=YES ]
+					Switch item=NightState
+				}
+		}
+		Text label="Rooms" icon="light" {	
+			Frame label="Master Bedroom" {
+					Slider item=vMBR_HeadboardPots
+					Slider item=vMBR_CenterPots
+					}
+
+					Frame label="Michaels Bedroom" {
+						Slider item=vBedroomLights
+						Switch item=vBedroom_PIR mappings=[1=MOTION, 0="NO MOTION"]
+					}
+					Frame label="Office" {
+						Slider item=vOfficeLights
+						Text item=vOfficeDoor 
+						Text item=vOffice_ClosetDoor_Left
+						Text item=vOffice_ClosetDoor_Right
+					}
+				}
+		Text label="LG TV" icon="light" {				
+			Frame label="Living Room TV"
+				{
+				Switch item=LgTvConnStatus
+				Switch item=LgTvPower mappings=[ON="Power Off"]
+				Setpoint item=LgTvChannel minValue=0 maxValue=300 step=1.0
+				Setpoint item=LgTvVolume minValue=0 maxValue=100 step=1.0
+				Switch item=LgTvMute mappings=[ON="Mute", OFF="Mute"]
+				Text item=LgTvChannelName
+				Text item=LgTvAVMODE
+				Text item=LgTvExternalInput
+				Selection item=LgTvChannel mappings=[1="ORF1",2="ORF2"]
+				Switch item=LgTvAppExecute label="AppExecute" mappings=[Skype=Skype, Spotify=Spotify]
+				Switch item=LgTvAppTerminate label="AppTerminate" mappings=[Skype=Skype, Spotify=Spotify]
+				}
+		}
+		Text label="Power: TED" icon="energy" {	
+			Frame label="Live Power Readings" {
+					Text item=Power_Now
+					Text item=Power_Range_Now
+					Text item=Power_Well_Now
+					Text item=Power_AC_Now
+					}
+
+					Frame label="Power Consumed for Today" {
+						Text item=Power_Main_TDY
+						Text item=Power_Range_TDY
+						Text item=Power_Well_TDY
+						Text item=Power_AC_TDY
+					}
+					Frame label="Power Cost Analysis" {
+						Text item=Power_CostNow_div
+						Text item=Power_CostTDY_div
+						Text item=Power_CostMTD_div
+						Text item=Power_CostProj_div
+						Text item=Power_CostAvg_div
+						Text item=Power_CurrentTOUDescription 
+					}
+				}
+		Text label="Door Sensors" icon="door" {
+			Frame label="Current Door Status" {
+				Text item=vHouseDoor  icon="frontdoor-open"    visibility=[vHouseDoor=="OPEN"]
+                Text item=vHouseDoor  icon="frontdoor-closed"  visibility=[vHouseDoor!="OPEN"]
+                
+				Text item=vPatioDoor1  icon="frontdoor-open"    visibility=[vPatioDoor1=="OPEN"]
+                Text item=vPatioDoor1  icon="frontdoor-closed"  visibility=[vPatioDoor1!="OPEN"]
+                
+                Text item=vGarageDoor  icon="frontdoor-open"    visibility=[vGarageDoor=="OPEN"]
+                Text item=vGarageDoor  icon="frontdoor-closed"  visibility=[vGarageDoor!="OPEN"]
+				
+                //Text item=vPatioDoor1_LastUpdate  icon="frontdoor-open"    visibility=[vPatioDoor1=="OPEN"]
+                //Text item=vPatioDoor1_LastUpdate  icon="frontdoor-closed"  visibility=[vPatioDoor1!="OPEN"]
+				
+				//Text item=vGarageDoor_LastUpdate  icon="frontdoor-open"    visibility=[vGarageDoor=="OPEN"]
+                //Text item=vGarageDoor_LastUpdate  icon="frontdoor-closed"  visibility=[vGarageDoor!="OPEN"]
+			}
+			Frame label="Battery Status Battery" icon="energy"{
+				Text item=vHouseDoor_Battery
+				Text item=vPatioDoor1_Battery
+				Text item=vGarageDoor_Battery
+				//Text item=vGarageDoor_Battery
+			}
+		}
+		Text label="Presence" icon="present" {
+			Frame label="House Status" {
+				Switch item=gPresent mappings=[ON="Someone Home",OFF="House Empty"]
+			}
+			Frame label="Chris" {
+				//Switch item=chris_presence	icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Switch item=chris_phoneWiFi icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Switch item=chris_phoneGPS  icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Text item=chris_distance
+				//Chart item=chris_distance period=d refresh=300 service=mysql
+				Switch item=gChrisPresent mappings=[ON="Home",OFF="Away"]
+				Text item=chris_phone_departure
+				}
+			Frame label="Alexa" {
+				//Switch item=alexa_presence	icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Switch item=alexa_phoneWiFi icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Switch item=alexa_phoneGPS  icon="present" valuecolor=[ON="green",OFF="blue"] mappings=[ON=Present,OFF=Away]
+				Text item=alexa_distance
+				//Chart item=alexa_distance period=d refresh=300 service=mysql
+				Switch item=gAlexaPresent mappings=[ON="Home",OFF="Away"]
+				Text item=alexa_phone_departure
+			}
+		}
+		
+		Text label="Garage Door Controls" icon="garage" {		
+			Frame label="Front 12' Door" {
+				Switch item=GarageDoorFront12Switch
+				Text item=GarageDoorFront12String
+				Text item=GarageDoorFront12Contact
+				Switch item=GarageDoorFront12Shutter
+			}
+			Frame label="Front 16' Door" {
+				Switch item=GarageDoorFront16Switch
+				Text item=GarageDoorFront16String
+				Text item=GarageDoorFront16Contact
+				Switch item=GarageDoorFront16Shutter
+			}
+			Frame label="Rear 12' Door" {
+				Switch item=GarageDoorRear12Switch
+				Text item=GarageDoorRear12String
+				Text item=GarageDoorRear12Contact
+				Switch item=GarageDoorRear12Shutter
+			}
+		}
+		Text item=SpeedtestSummary {
+			Frame label="Results" {
+				Text item=SpeedtestResultDown
+				Text item=SpeedtestResultUp
+				Text item=SpeedtestResultPing
+			}
+			Frame label="Control" {
+				Text item=SpeedtestResultDate
+				Text item=SpeedtestRunning label="Speedtest [%s]" visibility=[SpeedtestRunning != "-"]
+				Switch item=SpeedtestRerun mappings=[ON="Start"]
+			}
+			Frame label="Statistics" {
+				Text label="..." icon="speedtest_analytics8"
+			}
+		}
+		Text label="Christmas Lighting" icon="light"{
+			Switch label="All Christmas Lights: " item=gChristmasLights mappings=[ON="All On", OFF="All Off"]
+			Switch item=Rcpt_Garage label="Garage Eve Lights" 
+			Switch item=Rcpt_House_Outside label="House Outside Rcpt"
+		}
+		Text label="Smartthings" icon="light"{
+		Switch item=vdev
+		Switch item=vEcosmart
+		Slider item=vEcosmart_dimmer
+		Text item=vEcosmart_colorTemperature	
+		}
+		Frame label="Astro: Sun" {
+			Text item=Sunrise_Time
+			Text item=Sunset_Time
+			Text item=SunElevation
+		}
+		Frame label="Astro: Moon" {
+			Text item=Moonrise_Time
+			Text item=MoonIllumination
+			Text item=MoonElevation
+			Text item=Clouds
+		}
+
+}

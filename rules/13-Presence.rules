@@ -1,0 +1,366 @@
+import org.joda.time.LocalTime
+//***************************
+// Presence Vars
+//***************************
+var boolean debug = true				//show pushover debugging messages
+var Timer tWelcomeHome = null			//Presence Welcome Home Timer (Outside Lights on for X minutes)
+var Integer arrivalontime = 7 			//Time in Minutes. How long outside lights should stay on when detecting someone coming home.
+var Number A_Pres_counter = 0
+var Number C_Pres_counter = 0 			//Counter used for Chris' phone if phone flapps home/away
+var Number C_Home = 0 					//Chris Phone Status: 1 = true (Present) 
+var Number A_Home = 0				    //2 = false (Not Present)
+var String PresenceDetection = null
+var String PresenceWho = null
+
+//***********************************************************************************************************************************************
+// 														Presence Arrival (WiFi / GPS) FUNCTION and RULES										*
+//***********************************************************************************************************************************************	
+/*
+The following variables are required for Present Function:
+
+who 		= 	Name of person Arriving
+wifi 		=	ITEM: Phone Wifi (Wifi Detection)
+gps			=	ITEM: Phone GPS (GPS Detection)
+whoPresent	=	ITEM: Present Group for who (Wifi and GPS grouped together)
+altPresent 	= 	ITEM: Present Group of another person (Used to not turn front lights on if past 9:30 so we don't wake them if sleeping)
+*/
+
+
+val Functions$Function5<String, GenericItem, GenericItem, GenericItem, GenericItem, Boolean> PresenceArrival= [
+    who,
+    wifi,
+    gps,
+    whoPresent,
+    altPresent |
+    
+{	
+
+	logInfo("-13-.Presence.F1", "### Running FUNCTION PresenceArrival for "+who+" ###")
+       //if(whoPresent.historicState(now.minusSeconds(20)).state == OFF && (wifi.state == ON || gps.state == ON)) {
+		if(whoPresent.state == OFF && (wifi.state == ON || gps.state == ON)) {
+			logInfo("-13-.Presence.F1", "--> Arrival Check Started")
+			//Set Soffight Lighting Timeout to 600sec (10mins)
+			//postUpdate(SoffitTimerTimeout, 600)
+			var String PresenceDetection = new String
+			if (wifi.state == ON) {
+				PresenceDetection = "WiFi"
+			} else if (gps.state == ON) {
+				PresenceDetection = "GPS"
+			}
+
+			logInfo("-13-.Presence.F1", "--> Trigger: " + PresenceDetection + ": Updating " + who + " to HOME.")
+			///pushover("FUNC.1 --> Trigger: " + PresenceDetection + ": Updating " + who + " to HOME")
+			postUpdate(whoPresent, ON)
+					//logInfo("13-PRESENCE.WIFI.Timer", "--> (tWelcomeHome = null). Allowing Welcome Home Routine to run.")
+					//logInfo("13-PRESENCE.WIFI.Timer", "--> Unlocking House Door for " + who + ".")
+					//pushover("FUNC.2--> Welcome Home " + who+ ". Running Welcome Rules (Unlock, Lighting...")
+					vHouseLock_Proxy.sendCommand(OFF)
+					//sendCommand(vHouseLock, OFF)
+					ecobeeResumeProgram("310191946048", true)	
+					Thread::sleep(500)
+						if(NightState.state != OFF) {
+							logInfo("-13-.Presence.F1", "--> Turing Soffit lights ON. Reason: NightState = ON")        
+							//pushover("FUNC.3--> Dark Out. Turning Lights on for " +who)         
+							sendCommand(vFrontGarageSoffit, 100)
+							sendCommand(Light_House_Soffit, 100)
+							if((altPresent.state == ON) && ((new LocalTime().getLocalMillis()) >= (new LocalTime(21, 30, 0, 0).getLocalMillis()) || (new LocalTime().getLocalMillis()) <= (new LocalTime(7, 0, 0, 0).getLocalMillis()))){
+								logInfo("-13-.Presence.F1", "--> Someone is home and its past 9:30pm. Not turning on Front Lights")
+								//pushover("FUNC.4--> Somone Currently Home. Its Past 9:30. Leaving Front Lights OFF")   
+								} else {
+							sendCommand(vFrontHouseSoffit, 100)			//font of house soffit lights
+								logInfo("-13-.Presence.F1", "--> Turning Front Lights on. No one currently Home.")
+								//pushover("FUNC.4--> Turning Front Lights on. No one currently Home.")   
+							}
+						}
+			//Set Soffight Lighting timeout back to default (150sec)			
+            //postUpdate(SoffitTimerTimeout, 150)   
+			pushover(null, null, who + " (" +PresenceDetection+ ") is HOME.", null, "Presence Arrival", null, null, 1, null)  
+			}   	
+	 
+}
+true
+]
+
+//***********************************************************************************************************************************************
+// 														Presence Check FUNCTION and RULES														*
+//***********************************************************************************************************************************************	
+/*
+The following variables are required for Present Function:
+
+who 		= 	Name of person Arriving
+wifi 		=	ITEM: Phone Wifi (Wifi Detection)
+gps			=	ITEM: Phone GPS (GPS Detection)
+whoPresent	=	ITEM: Present Group for who (Wifi and GPS grouped together) eg. ITEM: chris_presence
+*/
+
+
+val Functions$Function4<String, GenericItem, GenericItem, GenericItem, Boolean> PresenceCheck= [
+    who,
+    wifi,
+    gps,
+    whoPresent |
+    
+{															//Home 120sec ago, Currently Home 
+        if((wifi.state == OFF && gps.state == OFF) && ((whoPresent.historicState(now.minusSeconds(120)).state == ON) && whoPresent.state == ON)){
+			//val String PresenceCheck = new String
+			sendCommand(whoPresent, OFF)
+            pushover(who+" Left Home")
+        }
+	 
+}
+true
+]
+
+//-------------------------------------------------	END OF FUNCTIONS ---------------------------------------------------------------------------
+//														 -----
+//------------------------------------------------- RULES BEGIN BELOW --------------------------------------------------------------------------
+
+
+//***********************************************************************************************************************************************
+// 														DETECT WIFI OR GPS ARRIVAL AND CALL FUNCTION											*
+// 																FOR BOTH CHRIS AND ALEXA														*
+//***********************************************************************************************************************************************	
+
+rule "Chris Presence Arrival: Phone Connected to WiFi or GPS"
+when
+        Item chris_phoneWiFi changed from OFF to ON or
+		Item chris_phoneGPS changed from OFF to ON
+then
+	logInfo("-13-.Presence.R1", "### WiFi/GPS Changed to ON --  calling FUNCTION PresenceArrival ###")
+	PresenceArrival.apply("Chris", chris_phoneWiFi, chris_phoneGPS, chris_presence, gAlexaPresent)
+end
+
+rule "Alexa Presence Arrival: Phone Connected to WiFi or GPS"
+when
+        Item alexa_phoneWiFi changed from OFF to ON or
+		Item alexa_phoneGPS changed from OFF to ON
+then
+	logInfo("-13-.Presence.R2", "### WiFi/GPS Changed to ON --  calling FUNCTION PresenceArrival ###")
+	PresenceArrival.apply("Alexa", alexa_phoneWiFi, alexa_phoneGPS, alexa_presence, gChrisPresent)
+end
+
+
+//***********************************************************************************************************************************************
+// 														PRESENCE CHECK AND CALL FUNCTION														*
+// 															FOR BOTH CHRIS AND ALEXA															*
+//***********************************************************************************************************************************************	
+/*
+rule "Chris Presence Check: Verify WiFi and GPS Disconnect is Legit and not false"
+when
+        Item chris_phoneWiFi changed or
+		Item chris_phoneGPS changed
+then
+	logInfo("RULE.RUNNING.-04-", "### Presence Check --  calling FUNCTION PresenceCheck ###")
+	PresenceCheck.apply("Chris", chris_phoneWiFi, chris_phoneGPS, chris_presence)
+end
+
+rule "Alexa Presence Check: Verify WiFi and GPS Disconnect is Legit and not false"
+when
+        Item alexa_phoneWiFi changed or
+		Item alexa_phoneGPS changed
+then
+	logInfo("RULE.RUNNING.-04-", "### Presence Check --  calling FUNCTION PresenceCheck ###")
+	PresenceCheck.apply("Alexa", alexa_phoneWiFi, alexa_phoneGPS, alexa_presence)
+end
+*/
+
+
+//***********************************************************************************************************************************************
+// 														WHEN NO ONE IS PRESENT TURN EVERYTHING OFF 												*
+//***********************************************************************************************************************************************	
+
+rule "Presence: House Empty. Turn off Everything"
+when
+	//Item vTest changed or
+	Item gPresence changed from ON to OFF or 
+	Item gPresent changed from ON to OFF
+then
+	logInfo("-13-.Presence.R3", "### Presence: House Empty. Turn off Everything ###")
+{	
+	val StringBuilder NotHomePresenceReport = new StringBuilder
+	var Number sendMessage = 0
+	Thread::sleep(1000)
+	//TURN OFF ALL LIGHTS
+	//gPresence = Conditions Met from presence detection rule. Both chris_presence and alexa_presence are updated via a rule. This is both combined
+	//When OFF, both alexa and Chris are NOT home.
+	if(gPresence.state == OFF){
+		logInfo("-13-.Presence.R3", "--> Presence: gPresence = OFF")
+		if(vPresence_Override.state == OFF) { 
+			sendMessage = 1
+			logInfo("-13-.Presence.R3", "--> Presence: vPresence_Overridee = OFF")
+			logInfo("-13-.Presence.R3", "--> Presence: Checking Lights to turn OFF")
+			gOFFWhenNoPresence.members.filter[s|s.state == ON || s.state > 0].forEach[ item |
+				NotHomePresenceReport.append("- "+item.name+ " turned OFF\n")	
+				sendCommand(item,OFF)
+			]
+
+			//LOCK ALL DOORS
+			logInfo("-13-.Presence.R3", "--> Presence: Checking Locks to LOCK")
+			gLocks?.allMembers.filter(s | s.state==OFF).forEach[item|
+				NotHomePresenceReport.append("- "+item.name+ " has LOCKED\n")	
+				sendCommand(item,ON)
+				]
+			ecobeeSetHold("310191946048", null, null, "away", null, null, "nextTransition", null)
+			NotHomePresenceReport.append("- Thermostat set to AWAY\n")	
+			//Send PUSH Notification	
+			if(sendMessage == 1) {	
+				var message = "House Unoccupied:\n\n" + NotHomePresenceReport+"\n Current Power: "+Power_Now.state+ " watts"
+				pushover(null, null, message, null, "Presence: House Empty", null, null, 0, null) 
+				logInfo("-13-.Presence.R3", "--> House Unoccupied.\n\n"+ NotHomePresenceReport +" Current Power: "+Power_Now.state+ " watts")
+			} else {
+				pushover(null, null, "Everyone Left. Nothing ON to turn off.", null, "Presence: House Empty", null, null, 0, null) 
+			}
+		} else {
+		logInfo("-13-.Presence.R3", "<-- Presence Override is ENABLED (ON). Ignoring Presence Rules")
+		}	
+	} else {
+		logInfo("-13-.Presence.R3", "<-- Group gPresence is ON. Someone is Home still.")
+	}	
+}
+end
+
+//***********************************************************************************************************************************************
+// 														GPS Presence Notification									*
+//***********************************************************************************************************************************************	
+/*rule "Presence Arrival: Notify GPS detected for Chris"
+when
+		Item chris_phoneGPS changed from OFF to ON or
+		Item chris_phoneGPS changed from ON to OFF 
+	then
+	Thread::sleep(600) 
+	logInfo("13-PRESENCE", "### Presence Arrival: Notify GPS detected for Chris ###")
+		if (chris_phoneGPS.state == ON) {
+			logInfo("13-PRESENCE", "--> Chris GPS: Arrival")
+			pushover(null, null,"Chris GPS: Arrival", null,"Chris GPS", null, null, 1, null) 
+		} else if (chris_phoneGPS.state == OFF){
+			logInfo("13-PRESENCE", "--> Chris GPS: Departure")
+			pushover(null, null,"Chris GPS: Departure", null,"Chris GPS", null, null, 1, null) 
+		}
+	end
+
+rule "Presence Arrival: Notify WiFi detected for Chris"
+when
+		Item chris_phoneWiFi changed from OFF to ON or
+		Item chris_phoneWiFi changed from ON to OFF
+	then
+	Thread::sleep(600) 
+	logInfo("13-PRESENCE", "### Presence Arrival: Notify WiFi detected for Chris ###")
+		if (chris_phoneWiFi.state == ON) {
+			pushover("Chris WiFi: Connected")
+		} else if (chris_phoneWiFi.state == OFF){
+			pushover("Chris WiFi: Disconnected")
+		}
+	end
+*/
+//***********************************************************************************************************************************************
+// 														Chris Presence Check																	*
+//***********************************************************************************************************************************************	
+rule "Chris Presence Check/Counter"
+    when
+        Item chris_phoneWiFi received update or
+        Item chris_phoneGPS received update
+    then
+	logInfo("-13-.Presence.R4", "### Chris Presence (Wifi: [{}], GPS: [{}], Present: [{}]) Check/Counter ### ", chris_phoneWiFi.state, chris_phoneGPS.state, chris_presence.state)
+  	//IF STATE IS OFF SITE
+	//logInfo("-13-.Presence.R4", "Wifi: [{}], gps: [{}], Present: [{}]", chris_phoneWiFi.state, chris_phoneGPS.state, chris_presence.state )
+        if((chris_phoneWiFi.state == OFF && chris_phoneGPS.state == OFF) && chris_presence.state == ON  ){
+                C_Pres_counter = C_Pres_counter + 1
+                logInfo("-13-.Presence.R4", "CHECK: Chris Offline Counter: [{}]", C_Pres_counter )
+		if(debug == true){pushover("Chris Offline Counter: " + C_Pres_counter)}
+                        if(C_Pres_counter == 5) {  //IF AWAY FOR 5 COUNTS (1 COUNT = 1 MIN) THEN PERFORM AWAY ROUTINE
+                        	//SET PHONE AS AWAY AND WAIT FOR AN ON/PRESENT COMMAND
+                                logInfo("-13-.Presence.R4", "CHECK: Chris Offline Counter: >= 5: [{}]", C_Pres_counter )
+                                logInfo("-13-.Presence.R4", "CHECK: Marking Chris as AWAY (C_Home = 0, C_Pres_counter 0)" )
+                                C_Home = 0
+                                C_Pres_counter = 0
+								postUpdate(chris_presence, OFF)
+                                //
+                                //execute leaving commands
+                                //
+                                //
+                                if(debug == true){pushover("Chris is no Longer Present")}
+								chris_phone_departure.postUpdate(new DateTimeType())
+								//sendCommand(vHouseLock, ON) /* Lock the House Door*/
+                        }
+                }
+                else if((chris_phoneWiFi.state == ON || chris_phoneGPS.state == ON) && chris_presence.state == ON && C_Pres_counter >= 1 ){
+                		//PHONE FLAPPED. RESET COUNTER TO IGNORE FUTURE FLAPS
+                		if(debug == true){pushover("Chris Phone Flapping, resetting counter")}
+                		logInfo("-13-.Presence.R4", "CHECK: Chris Phone Flapping. Resetting counter. (C_Pres_counter = 0)")
+                        C_Home = 1
+                        C_Pres_counter = 0
+                }
+    end
+
+//***********************************************************************************************************************************************
+// 														Alexa Presence Check																	*
+//***********************************************************************************************************************************************	
+rule "Alexa Presence Check/Counter"
+    when
+        Item alexa_phoneWiFi received update or
+        Item alexa_phoneGPS received update
+    then
+	logInfo("-13-.Presence.R5", "### Alexa Presence (Wifi: [{}], GPS: [{}], Present: [{}]) Check/Counter ###", alexa_phoneWiFi.state, alexa_phoneGPS.state, alexa_presence.state)
+  	//IF STATE IS OFF SITE
+        if((alexa_phoneWiFi.state == OFF && alexa_phoneGPS.state == OFF) && alexa_presence.state == ON  ){
+                A_Pres_counter = A_Pres_counter + 1
+                logInfo("-13-.Presence.R5", "CHECK: Alexa Offline Counter: [{}]", A_Pres_counter )
+		if(debug == true){pushover("Alexa Offline Counter: " + A_Pres_counter)}
+                        if(A_Pres_counter == 5) {  //IF AWAY FOR 5 COUNTS (1 COUNT = 1 MIN) THEN PERFORM AWAY ROUTINE
+                        	//SET PHONE AS AWAY AND WAIT FOR AN ON/PRESENT COMMAND
+                                logInfo("-13-.Presence.R5", "CHECK: Alexa Offline Counter: >= 5: [{}]", A_Pres_counter )
+                                logInfo("-13-.Presence.R5", "CHECK: Marking Alexa as AWAY (A_Home = 0, A_Pres_counter 0)" )
+                                A_Home = 0
+                                A_Pres_counter = 0
+								postUpdate(alexa_presence, OFF)
+                                //
+                                //execute leaving commands
+                                //
+                                //
+                                if(debug == true){pushover("Alexa is no Longer Present")}
+								alexa_phone_departure.postUpdate(new DateTimeType())
+								//sendCommand(vHouseLock, ON) /* Lock the House Door*/
+                        }
+                }
+                else if((alexa_phoneWiFi.state == ON || alexa_phoneGPS.state == ON) && alexa_presence.state == ON && A_Pres_counter >= 1 ){
+                		//PHONE FLAPPED. RESET COUNTER TO IGNORE FUTURE FLAPS
+                		if(debug == true){pushover("Alexa Phone Flapping, resetting counter")}
+                		logInfo("-13-.Presence.R5", "CHECK: Alexa Phone Flapping. Resetting counter. (A_Pres_counter = 0)")
+                        A_Home = 1
+                        A_Pres_counter = 0
+                }
+    end
+    
+
+//***********************************************************************************************************************************************
+// 														On Load: Check Phone Presence Status													*
+//***********************************************************************************************************************************************	
+rule "Check Phone Presence at startup"
+when
+    System started
+then
+	logInfo("-13-.Presence.R6", "### Check Phone Presence at startup ###")
+{
+	// Check current status of Chris' phone and set home state
+	if(chris_phoneWiFi.state == ON || chris_phoneGPS.state == ON){
+		C_Home=1
+		postUpdate(chris_presence, ON)		
+		logInfo("-13-.Presence.R6", "<-- Initializing --> Chris is HOME. (C_Home = 1)")
+	} else if(chris_phoneWiFi.state == OFF && chris_phoneGPS.state == OFF){
+		C_Home=0
+		postUpdate(chris_presence, OFF)
+		logInfo("-13-.Presence.R6", "<-- Initializing --> Chris is AWAY. (C_Home = 0)")
+	}
+
+    // Check current status of Alexa's phone and set home state
+    if(alexa_phoneWiFi.state == ON || alexa_phoneGPS.state == ON){
+        A_Home=1
+		postUpdate(alexa_presence, ON)
+		logInfo("-13-.Presence.R6", "<-- Initializing --> Alexa is HOME. (A_Home = 1)")
+        } else if(alexa_phoneWiFi.state == OFF && alexa_phoneGPS.state == OFF){
+			postUpdate(alexa_presence, OFF)
+            A_Home=0
+			logInfo("-13-.Presence.R6", "<-- Initializing --> Alexa is AWAY. (A_Home = 0)")
+        }
+}
+end

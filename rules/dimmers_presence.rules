@@ -1,0 +1,727 @@
+//import org.eclipse.smarthome.core.library.types.DateTimeType
+import org.eclipse.smarthome.core.library.types.DecimalType
+import org.eclipse.smarthome.model.script.actions.Timer
+//import org.joda.time.LocalTime
+
+//-----------------------------door sensor vars--
+//Global variable used for lights on delay. How long to keep lights on after door opens?
+var Integer timeout = 150 //seconds
+
+
+
+//***************************
+// Door Sensor Vars
+//***************************
+var Timer tHouseDoor = null
+
+var Timer tPatioDoor1 = null
+var Timer tGarageDoor = null
+var int restore1 = 0
+var int restore2 = 0
+
+var int vDrivewaySoffit_Restore = null
+/*
+var int vFrontGarageSoffit_Restore = null
+var int vSideGarageSoffit_Restore = null
+var int vRearGarageSoffit_Restore = null
+var int vFrontHouseSoffit_Restore = null
+*/
+var int restoreVal = 0
+var int HouseDoor_RestoreLights = 0
+var int PatioDoor_RestoreLights = 0
+var int GarageDoor_RestoreLights = 0
+
+var Number test = 0
+//***************************
+
+//***************************
+//***************************
+// Dimmer Switch Vars
+//***************************
+var int percent = 0				//Log dimmer value for syncing
+
+
+
+//***************************************************************************************
+//*                                                                                     *
+//*                  D I M M E R   S Y N C   R U L E S                                  *
+//*                                                                                     *
+//***************************************************************************************
+
+//***********************************************************************************************************************************************
+// 													DRIVEWAY SOFFIT DIMMER DISABLE SYNC WHEN OFF				 								*
+//***********************************************************************************************************************************************
+
+/* Office Dimmer Disable Syncing when Lights turned OFF */	
+rule "Soffit Dimmer: Disable Sync when OFF"
+    when
+        Item Light_House_Soffit changed to 0
+    then
+    	logInfo("RULE.RUNNING.-04-", "### Soffit Dimmer: Disable Sync when OFF ###")
+{
+		postUpdate(dimmerSync,0)
+		logInfo("RULE.LIGHTING.dimmerSync", "--> Dimmer Turned OFF. Clearing Sycing (dimmerSync = 0)")	
+}
+end
+
+//***********************************************************************************************************************************************
+// 													DRIVEWAY SOFFIT DIMMER SYNCING CONTROL				 										*
+//***********************************************************************************************************************************************
+
+/* House Dimmer Syncing if SCENE has been Selected */	
+/* 0 = OFF, 2 = House & Garage , 3 = ALL */	
+rule "House Soffit Side Dimmer: Sync based on SCENE"
+    when
+        Item Light_House_Soffit received update
+    then
+		logInfo("RULE.RUNNING.-04-", "### House Soffit Side Dimmer: Sync based on SCENE ###")
+		percent = ((Light_House_Soffit.state as DecimalType)).intValue
+
+		switch(dimmerSync.state) {
+			case 0 : {
+				/* Single Press - No action for local light control*/
+				//logInfo("RULE.LIGHTING.Light_House_Soffit", "--> dimmerSync = 0.")	
+			    }
+			case 2 : {
+			// WHen dimmerSync = 2. Send same dimness value to garage soffit dimmer.
+				sendCommand(vFrontGarageSoffit, percent)
+				logInfo("RULE.LIGHTING.Light_House_Soffit", "--> dimmerSync = 2. Syncing House and Garage")	
+			}
+			case 3 : {
+				logInfo("RULE.LIGHTING.Light_House_Soffit", "--> dimmerSync = 3.")	
+			}
+		}
+    end
+
+//***********************************************************************************************************************************************
+// 													DRIVEWAY SOFFIT DIMMER SCENE CONTROL	 													*
+//***********************************************************************************************************************************************
+	
+/* House Side Dimmer SCENE Control -- Scene Tap Selection Syncing */	
+/* 0 = OFF, 2 = House & Garage , 3 = ALL */	
+rule "House Soffit Side Dimmer: Scene Tap Selection Syncing"
+    when
+        Item Light_House_Soffit_Scene received update
+    then
+		logInfo("RULE.RUNNING.-04-", "### House Soffit Side Dimmer: Scene Tap Selection Syncing ###")
+		switch(Light_House_Soffit_Scene.state) {
+			/*ON*/
+			case 1.0 : {							/* Single Tap ON */
+				logInfo("RULE.LIGHTING.Light_House_Soffit", "Single Press ON")
+					//CANCEL OFF TIMER CREATED FROM DOOR OPEN BY PRESSING UP ONCE
+					if (tHouseDoor !== null) {
+							tHouseDoor.cancel()
+							logInfo("RULE.LIGHTING.Light_House_Soffit", "Canceling tHouseDoor Timer. Single Press Up Received")
+							tHouseDoor = null
+							//vDrivewaySoffit_Restore = null
+							vFrontGarageSoffit_Restore = null
+					}
+			    }
+			case 1.3 : {							/* Double Tap ON */
+			    logInfo("RULE.LIGHTING.Light_House_Soffit", "Double Press ON")
+		/*
+					if (vEcosmart.state == ON) {
+						logInfo("RULE.RUNNING.ecosmart", "### Switch ON ###")
+						sendCommand(vEcosmart, OFF)
+						Thread::sleep(1000) 
+						sendCommand(vEcosmart, ON)
+					}
+					else {
+						logInfo("RULE.RUNNING.ecosmart", "### Switch OFF ###")
+						sendCommand(vEcosmart, ON)
+						Thread::sleep(1000) 
+						sendCommand(vEcosmart, OFF)	
+						}
+		*/
+				//DOUBLE TAP - SYNC TURN LIGHTS ON AND ENABLE DIMMER SYNC
+				if(Light_House_Soffit.state == 0){
+					logInfo("RULE.LIGHTING.Light_House_Soffit", "--> Turning Lights ON and Syncing Switches")
+					sendCommand(Light_House_Soffit, 100)
+					sendCommand(vFrontGarageSoffit, 100)
+					postUpdate(dimmerSync,2)
+					}
+					else {
+						logInfo("RULE.LIGHTING.Light_House_Soffit", "--> Syncing House Dim Value to Garage and Syncing")
+						percent = ((Light_House_Soffit.state as DecimalType)).intValue
+						sendCommand(vFrontGarageSoffit, percent)
+						postUpdate(dimmerSync,2)
+					}
+				//DOUBLE TAPPED WHEN DIMMER SYNC IS ENABLED
+				//BREAKS THE SYNC.
+				if(dimmerSync.state == 2){
+					logInfo("RULE.LIGHTING.Light_House_Soffit", "--> Dbl.TAP --> Disabling Dimmer SYNC")
+					postUpdate(dimmerSync,0)
+				}
+			}
+			case 1.4 : { 							/* Tripple Tap ON */
+			   	logInfo("RULE.LIGHTING.Light_House_Soffit", "Tripple Press ON")
+			   	postUpdate(dimmerSync,3)
+				sendCommand(vFrontHouseSoffit, 5)
+			   	sendCommand(Light_House_Soffit, 2)
+				sendCommand(vFrontGarageSoffit, 5)
+			}
+			/*OFF*/
+			case 2.0 : {							/* Single Tap OFF */
+				logInfo("RULE.LIGHTING.Light_House_Soffit", "Single Press OFF")
+			    }
+			case 2.3 : {							/* Double Tap OFF */
+			    logInfo("RULE.LIGHTING.Light_House_Soffit", "Double Press OFF")
+				postUpdate(dimmerSync,0)
+				sendCommand(vFrontGarageSoffit, OFF)
+				sendCommand(Light_House_Soffit, OFF)
+				if(tHouseDoor !== null){
+					tHouseDoor.cancel()
+					//vDrivewaySoffit_Restore = null
+					vFrontGarageSoffit_Restore = null
+				}
+			}
+			case 2.4 : { 							/* Tripple Tap OFF */
+			   logInfo("RULE.LIGHTING.Light_House_Soffit", "Tripple Press OFF")
+			   postUpdate(dimmerSync,0)
+			}
+		}
+    end
+	
+	
+rule "Turn Lights off if not DARK"
+when	
+    Item gLightsOFFifDAYLIGHT changed 
+then
+logInfo("RULE.RUNNING.-04-", "### Turn Lights off if not DARK ###")
+{
+	if(NightState.state != ON  && AllowLightsDaylight.state != ON) {
+		gLightsOFFifDAYLIGHT.allMembers.filter(s | s.state > 0 ).forEach[ item | 
+			logInfo("RULE.LIGHTING.OFFwhenBRIGHT", "--> Light ON during Daylight.  Turning OFF [{}]", item.name)
+			sendCommand(item, OFF)
+			]
+	} 
+}
+end
+
+//***********************************************************************************************************************************************
+//*                                                                                     														*
+//*                  							D O O R    S E N S O R    R U L E S                                								*
+//*                                                                                     														*
+//***********************************************************************************************************************************************
+
+/*
+rule "A Door's State Changed. Log Timestamp"
+when
+		Item vHouseDoor changed or
+		Item vPatioDoor1 changed or
+        Item vGarageDoor changed
+then
+{
+//***********************************************************************************************************************************************
+// 													DETERMINE WHAT DOOR OPENED FROM GROUP gDoorSensors	 										*
+//***********************************************************************************************************************************************
+	logInfo("RULE.DOORSENSOR", "### A Door's State Changed. Log Timestamp ###") 
+	Thread::sleep(100) 
+	gDoorSensors.members.filter(s|s.changedSince(now.minusSeconds(1))).forEach[ door |
+    	logInfo("RULE.DOORSENSOR", "--> Door state changed: {}", door.name)
+//***********************************************************************************************************************************************
+// 														SET TIMESTAMP WHEN DOOR OPENS	 														*
+//***********************************************************************************************************************************************	
+		if(door.state == 1) {
+			gDoorSensorsTime?.members.filter(dt|dt.name == door.name+"_LastUpdate").head.postUpdate(new DateTimeType)
+			logInfo("RULE.DOORSENSOR", "--> Setting OPEN timestamp for door: {} ", door.name)
+		}
+	]
+}
+end
+*/
+//***********************************************************************************************************************************************
+// 															HOUSE DOOR LIGHTING	 																*
+//***********************************************************************************************************************************************
+/*rule "Door Sensor Lighting Override"
+when
+	Item vDoorOpenLights_Override changed from OFF to ON
+then
+	logInfo("RULE.RUNNING", "### Door Sensor Lighting Override ###")
+{	
+	logInfo("RULE.SENSOR.Override", "--> Canceling all Active Door Sensor Timers (tHouseDoor, tPatioDoor1")
+	if(tHouseDoor !== null){
+		tHouseDoor.cancel()
+		logInfo("RULE.SENSOR.Override", "--> Canceling tHouseDoor")
+		tHouseDoor = null
+		vDrivewaySoffit_Restore = null
+		vFrontGarageSoffit_Restore = null		
+	}
+	if(tPatioDoor1 !== null){
+		tPatioDoor1.cancel()
+		logInfo("RULE.SENSOR.Override", "--> Canceling tPatioDoor1")
+		tPatioDoor1 = null
+	}
+	if(tGarageDoor !== null){
+		tGarageDoor.cancel()
+		logInfo("RULE.SENSOR.Override", "--> Canceling tGarageDoor")
+		tGarageDoor = null
+	}
+	if(tWelcomeHome !== null){
+		tWelcomeHome.cancel()
+		logInfo("RULE.SENSOR.Override", "--> Canceling tWelcomeHome")
+		tWelcomeHome = null
+	}
+}
+end
+*/
+//***********************************************************************************************************************************************
+// 															HOUSE DOOR LIGHTING	 																*
+//***********************************************************************************************************************************************
+/*
+rule "House Door OPEN/CLOSED Check"
+when
+       Item vHouseDoor changed
+then
+	logInfo("RULE.RUNNING", "### House Door OPEN/CLOSED Check ###")
+	vHouseDoor_LastUpdate.postUpdate( new DateTimeType() )			// TimeStamp Door Change
+{	
+	if(vHouseDoor.state == OPEN){										//Door Opens
+		if(vDoorOpenLights_Override.state != ON){					//Lighting Override
+			if(NightState.state == ON){ 							//Dark Outside
+				if(tEntranceStairLights === null ) {					//turn stairwell  lights on when door opens
+					sendCommand(vEntranceStairLights, 100)
+					logInfo("RULE.DOORSENSOR.House", "--> Door Opened. Turning Stairwell Lights ON. Scheduling Timer to turn lights off..")
+					tEntranceStairLights = createTimer(now.plusSeconds(timeout)) [|
+						sendCommand(vEntranceStairLights, 0)
+						tEntranceStairLights = null
+					]
+				}else{
+					tEntranceStairLights.reschedule(now.plusSeconds(timeout))
+					logInfo("RULE.DOORSENSOR.House", "--> Door Opened. tEntranceStairLights is ACTIVE. Rescheduling Timer")
+				}
+					if(tHouseDoor === null){								//No active timer running for this door 
+						if(tWelcomeHome !== null){						//Check if Presence Timer is running and Cancel it Now
+							tWelcomeHome.cancel()
+							tWelcomeHome = null
+							logInfo("RULE.DOORSENSOR.House", "--> Canceling tWelcomeHome")
+						}
+						if(tPatioDoor1 !== null ) { //timer running
+							tPatioDoor1.cancel()
+							tPatioDoor1 = null
+							logInfo("RULE.DOORSENSOR.House", "--> Canceling tPatioDoor1")
+							logInfo("RULE.DOORSENSOR.House", "--> Using tPatioDoor1 Light Restore Values")
+						}
+						if(tGarageDoor !== null ) { 
+							tGarageDoor.cancel()
+							tGarageDoor = null
+							logInfo("RULE.DOORSENSOR.House", "--> Canceling tGarageDoor")
+							logInfo("RULE.DOORSENSOR.House", "--> Using tGarageDoor Light Restore Values")
+						}	
+						if(vDrivewaySoffit_Restore == null && vFrontGarageSoffit_Restore == null ) {
+							vDrivewaySoffit_Restore = ((Light_House_Soffit.state as DecimalType)).intValue
+							vFrontGarageSoffit_Restore = ((vFrontGarageSoffit.state as DecimalType)).intValue
+							logInfo("RULE.DOORSENSOR.House", "--> Storing Restore Values. Driveway: " +vDrivewaySoffit_Restore+"%, Garage: "+vFrontGarageSoffit_Restore+"%")
+						}
+						logInfo("RULE.DOORSENSOR.House", "--> Creating tHouseDoor OFF timer: " + timeout + " sec")
+						sendCommand(vFrontGarageSoffit, 75)
+						sendCommand(Light_House_Soffit, 100)
+							tHouseDoor = createTimer(now.plusSeconds(timeout)) [|
+								tHouseDoor = null
+								Thread::sleep(300) 
+								logInfo("RULE.DOORSENSOR.House", "--> tHouseDoor Expired. Reason: " + timeout + " second Timer Expired")
+								sendCommand(Light_House_Soffit, vDrivewaySoffit_Restore)
+								sendCommand(vFrontGarageSoffit, vFrontGarageSoffit_Restore)
+								sendCommand(vSideGarageSoffit, vSideGarageSoffit_Restore)
+								sendCommand(vFrontHouseSoffit, vFrontHouseSoffit_Restore)
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Driveway Soffit: " +vDrivewaySoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Garage Front Soffit: "+vFrontGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Garage Side Soffit: "+vSideGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring House Front Soffit: "+vFrontHouseSoffit_Restore+"%")
+								vDrivewaySoffit_Restore = null
+								vFrontGarageSoffit_Restore = null
+								vFrontHouseSoffit_Restore = null
+								tHouseDoor = null
+							]
+						//} else {
+						//	logInfo("RULE.DOORSENSOR.House", "<-- tPatioDoor1 is ACTIVE.  Ignoring Light Routine")
+						//	logInfo("RULE.DOORSENSOR.House", "--> Rescheduling Patio Soffit Lights. tPatioDoor1 = "+ timeout + " seconds.")
+						//	tPatioDoor1.reschedule(now.plusSeconds(timeout))
+						//}
+					} else if(tHouseDoor !== null){
+						logInfo("RULE.DOORSENSOR.House", "<-- Rescheduling House Lights. tHouseDoor = "+ timeout + " seconds.")
+						tHouseDoor.reschedule(now.plusSeconds(timeout))
+					}	
+			} else {
+				logInfo("RULE.DOORSENSOR.House", "<-- NightState != Dark")
+			}
+		} else {
+			logInfo("RULE.DOORSENSOR.House", "<-- House Door Lights Override ENABLED. Skipping Lighting")
+		}
+	} else {
+		logInfo("RULE.DOORSENSOR.House", "<-- House Door changed to CLOSED")
+	}
+}
+end
+*/
+
+
+
+
+
+//***********************************************************************************************************************************************
+// 															PATIO DOOR LIGHTING		 															*
+//***********************************************************************************************************************************************
+/*rule "Patio Door OPEN/CLOSED Check"
+when
+		Item vPatioDoor1 changed
+then
+	logInfo("RULE.RUNNING", "### Patio Door OPEN/CLOSED Check ###")
+	vPatioDoor1_LastUpdate.postUpdate( new DateTimeType() )
+{	
+	if(vPatioDoor1.state == OPEN){
+		logInfo("RULE.DOORSENSOR.Patio", "--> Patio Door OPENED")
+		//vChromeCastGarageSpkr_uri.sendCommand("https://www.soundjay.com/door/doorbell-1.mp3")
+		if(vDoorOpenLights_Override.state == OFF){
+			if(NightState.state == ON) {
+				if(tPatioDoor1 === null){ //timer not running
+							if(tHouseDoor !== null){
+								tHouseDoor.cancel()
+								tHouseDoor = null
+								logInfo("RULE.DOORSENSOR.Patio", "<-- Canceling tHouseDoor")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Using tHouseDoor Light Restore Values")
+							}
+							if(tGarageDoor !== null ) { 
+								tGarageDoor.cancel()
+								tGarageDoor = null
+								logInfo("RULE.DOORSENSOR.Patio", "--> Canceling tGarageDoor")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Using tGarageDoor Light Restore Values")
+							}
+							
+							if(vDrivewaySoffit_Restore == null){
+								vDrivewaySoffit_Restore = ((Light_House_Soffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Patio", "--> Storing Restore Values. Driveway: " +vDrivewaySoffit_Restore+"%")
+							} 
+							if (vFrontGarageSoffit_Restore == null){
+								vFrontGarageSoffit_Restore = ((vFrontGarageSoffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Patio", "--> Storing Restore Values. Garage Front: "+vFrontGarageSoffit_Restore+"%")
+							} 
+							if (vSideGarageSoffit_Restore == null) {
+								vSideGarageSoffit_Restore = ((vSideGarageSoffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Patio", "--> Storing Restore Values. Garage Side: "+vSideGarageSoffit_Restore+"%")
+							}
+							
+							logInfo("RULE.DOORSENSOR.Patio", "--> Patio Door Opened. Creating OFF timer: " + timeout + " sec")
+							if(vFrontGarageSoffit.state == 0){
+								sendCommand(vFrontGarageSoffit, 50)
+							}
+							if(vSideGarageSoffit.state == 0){
+								sendCommand(vSideGarageSoffit, 100)
+							}
+							if(Light_House_Soffit.state == 0){
+								sendCommand(Light_House_Soffit, 5)
+							}
+							tPatioDoor1 = createTimer(now.plusSeconds(timeout)) [|
+								logInfo("RULE.DOORSENSOR.Patio", "--> tHouseDoor Expired. Reason: " + timeout + " second Timer Expired")
+								sendCommand(Light_House_Soffit, vDrivewaySoffit_Restore)
+								sendCommand(vFrontGarageSoffit, vFrontGarageSoffit_Restore)
+								sendCommand(vSideGarageSoffit, vSideGarageSoffit_Restore)
+								sendCommand(vFrontHouseSoffit, vFrontHouseSoffit_Restore)
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Driveway Soffit: " +vDrivewaySoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Garage Front Soffit: "+vFrontGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring Garage Side Soffit: "+vSideGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Patio", "--> Restoring House Front Soffit: "+vFrontHouseSoffit_Restore+"%")
+								vFrontGarageSoffit_Restore = null
+								vSideGarageSoffit_Restore = null
+								vDrivewaySoffit_Restore = null
+								tPatioDoor1 = null
+							]
+						
+				} else if(tPatioDoor1 !== null){
+					tPatioDoor1.reschedule(now.plusSeconds(timeout))
+					logInfo("RULE.DOORSENSOR.Patio", "<-- Rescheduling Patio Lights. tPatioDoor = "+ timeout + " seconds.")
+				}
+			} else {
+				logInfo("RULE.DOORSENSOR.Patio", "<-- NightState != Dark")
+			}
+		} else {
+			logInfo("RULE.DOORSENSOR.Patio", "<-- Patio Door Lights Override ENABLED. Skipping Lighting")
+		}	
+	} else {
+		logInfo("RULE.DOORSENSOR.Patio", "<-- Patio Door CLOSED")
+	}		
+}
+end
+
+//***********************************************************************************************************************************************
+// 															GARAGE DOOR LIGHTING	 															*
+//***********************************************************************************************************************************************
+rule "Garage Door OPEN/CLOSED Check"
+when
+        Item vGarageDoor changed
+then
+logInfo("RULE.RUNNING", "### Garage Door OPEN/CLOSED Check ###")
+	vGarageDoor_LastUpdate.postUpdate( new DateTimeType() )
+{	
+	if(vGarageDoor.state == OPEN){
+		logInfo("RULE.DOORSENSOR.Garage", "--> Garage Door OPENED")
+		if(vDoorOpenLights_Override.state == OFF){
+			if(NightState.state == ON) {
+				if(tGarageDoor === null){
+							if(tHouseDoor !== null){
+								tHouseDoor.cancel()
+								tHouseDoor = null
+								logInfo("RULE.DOORSENSOR.Garage", "<-- Canceling tHouseDoor")
+								logInfo("RULE.DOORSENSOR.Garage", "--> Using tHouseDoor Light Restore Values")
+							}
+							if(tPatioDoor1 !== null ) { 
+								tPatioDoor1.cancel()
+								tPatioDoor1 = null
+								logInfo("RULE.DOORSENSOR.Garage", "--> Canceling tPatioDoor1")
+								logInfo("RULE.DOORSENSOR.Garage", "--> Using tPatioDoor1 Light Restore Values")
+							}
+							
+							if(vDrivewaySoffit_Restore == null){
+								vDrivewaySoffit_Restore = ((Light_House_Soffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Garage", "--> Storing Restore Values. Driveway: " +vDrivewaySoffit_Restore+"%")
+							} 
+							if (vFrontGarageSoffit_Restore == null){
+								vFrontGarageSoffit_Restore = ((vFrontGarageSoffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Garage", "--> Storing Restore Values. Garage Front: "+vFrontGarageSoffit_Restore+"%")
+							} 
+							if (vSideGarageSoffit_Restore == null) {
+								vSideGarageSoffit_Restore = ((vSideGarageSoffit.state as DecimalType)).intValue
+								logInfo("RULE.DOORSENSOR.Garage", "--> Storing Restore Values. Garage Side: "+vSideGarageSoffit_Restore+"%")
+							}
+							
+							logInfo("RULE.DOORSENSOR.Garage", "--> Garage Door Opened. Creating OFF timer: " + timeout + " sec")
+							if(vFrontGarageSoffit.state == 0){
+								sendCommand(vFrontGarageSoffit, 100)
+							}
+							if(vSideGarageSoffit.state == 0){
+								sendCommand(vSideGarageSoffit, 75)
+							}
+							if(Light_House_Soffit.state == 0){
+								sendCommand(Light_House_Soffit, 75)
+							}
+							tGarageDoor = createTimer(now.plusSeconds(timeout)) [|
+								logInfo("RULE.DOORSENSOR.Garage", "--> tGarageDoor Expired. Reason: " + timeout + " second Timer Expired")
+								sendCommand(Light_House_Soffit, vDrivewaySoffit_Restore)
+								sendCommand(vFrontGarageSoffit, vFrontGarageSoffit_Restore)
+								sendCommand(vSideGarageSoffit, vSideGarageSoffit_Restore)
+								sendCommand(vFrontHouseSoffit, vFrontHouseSoffit_Restore)
+								logInfo("RULE.DOORSENSOR.Garage", "--> Restoring Driveway Soffit: " +vDrivewaySoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Garage", "--> Restoring Garage Front Soffit: "+vFrontGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Garage", "--> Restoring Garage Side Soffit: "+vSideGarageSoffit_Restore+"%")
+								logInfo("RULE.DOORSENSOR.Garage", "--> Restoring House Front Soffit: "+vFrontHouseSoffit_Restore+"%")
+								vFrontGarageSoffit_Restore = null
+								vSideGarageSoffit_Restore = null
+								vDrivewaySoffit_Restore = null
+								tGarageDoor = null
+							]
+						
+				} else if(tGarageDoor !== null){
+					tGarageDoor.reschedule(now.plusSeconds(timeout))
+					logInfo("RULE.DOORSENSOR.Garage", "<-- Rescheduling Garage Lights. tGarageDoor = "+ timeout + " seconds.")
+				}
+			} else {
+				logInfo("RULE.DOORSENSOR.Garage", "<-- NightState != Dark")
+			}
+		} else {
+			logInfo("RULE.DOORSENSOR.Garage", "<-- Garage Door Lights Override ENABLED. Skipping Lighting")
+		}	
+	} else {
+		logInfo("RULE.DOORSENSOR.Garage", "<-- Garage Door CLOSED")
+	}		
+}
+end
+
+*/
+//***************************************************************************************
+//*                                                                                     *
+//*                 	P R E S E N C E      R U L E S                                  *
+//*                                                                                     *
+//***************************************************************************************
+
+
+
+
+
+rule "Convert Smartthings GPS Presence Detection to Openhab"
+when
+	Item alexa_ST_presence changed from ON to OFF or 
+	Item alexa_ST_presence changed from OFF to ON
+then
+	logInfo("RULE.RUNNING.-04-", "### Convert Smartthings GPS Presence Detection to Openhab ###")
+{	
+	if (alexa_ST_presence.state == ON) {
+		logInfo("RULE.PRESENCE.SMARTTHINGS.GPS", "--> Detected Alexa's Arrival via Smartthings. Setting (alexa_phoneGPS = ON)")
+		//Present, Turn GPS ON
+		alexa_phoneGPS.sendCommand(ON)
+	} else if (alexa_ST_presence.state == OFF) {
+		//Left, Turn GPS OFF
+		logInfo("RULE.PRESENCE.SMARTTHINGS.GPS", "--> Detected Alexa's Departure via Smartthings. Setting (alexa_phoneGPS = OFF)")
+		alexa_phoneGPS.sendCommand(OFF)
+	}	
+}
+end
+
+//***********************************************************************************************************************************************
+// 														Phone Presence Arrival - When Phone Connects to WiFI									*
+//***********************************************************************************************************************************************	
+
+	
+/*		
+rule "Presence Arrival: Phone Connected to WiFi or GPS"
+when
+        Item chris_phoneWiFi changed from OFF to ON or
+		Item chris_phoneGPS changed from OFF to ON or
+		Item alexa_phoneWiFi changed from OFF to ON or
+		Item alexa_phoneGPS changed from OFF to ON 
+then
+	logInfo("RULE.RUNNING.-04-", "### Presence Arrival: Phone Connected to WiFi or GPS ###")
+        if((C_Home == 0 && (chris_phoneWiFi.state == ON || chris_phoneGPS.state == ON)) || (A_Home == 0 && (alexa_phoneWiFi.state == ON || alexa_phoneGPS.state == ON))) {
+			logInfo("RULE.PRESENCE.WIFI", "--> Arrival Check Started")
+				
+				if((C_Home == 0) && (chris_phoneWiFi.state == ON || chris_phoneGPS.state == ON)) {					
+						PresenceWho = "Chris"
+						if (chris_phoneWiFi.state == ON) {
+							PresenceDetection = "WiFi"
+						}
+						else if (chris_phoneGPS.state == ON) {
+							PresenceDetection = "GPS"
+						}
+					
+					C_Home = 1
+					//postUpdate(chris_presence, ON)
+					chris_phone_arrival.postUpdate(new DateTimeType())
+					logInfo("RULE.PRESENCE.WIFIGPS", "--> Trigger: " + PresenceDetection + ": Updating " + PresenceWho + " to HOME. (C_Home = 1)")
+					pushover("--> Trigger: " + PresenceDetection + ": Updating " + PresenceWho + " to HOME. (C_Home = 1)")
+					}
+					else if((A_Home == 0) && (alexa_phoneWiFi.state == ON ||  alexa_phoneGPS.state == ON)){
+						PresenceWho = "Alexa"
+						if (alexa_phoneWiFi.state == ON) {
+							PresenceDetection = "WiFi"
+						}
+						else if (alexa_phoneGPS.state == ON) {
+							PresenceDetection = "GPS"
+						}
+						
+						A_Home = 1
+						//postUpdate(alexa_presence, ON)
+						alexa_phone_arrival.postUpdate(new DateTimeType())
+						logInfo("RULE.PRESENCE.WIFIGPS", "--> Trigger: " + PresenceDetection + ": Updating " + PresenceWho + " to HOME. (A_Home = 1)")
+						pushover("--> Trigger: " + PresenceDetection + ": Updating " + PresenceWho + " to HOME. (A_Home = 1)")
+					}
+
+			if(tWelcomeHome === null){
+//-----------------------------------------------------------------------------------------------------------------------------------------------
+// 													Welcome Home Rules. Perform:
+//														a. Unlock House Doors
+//														b. If Dark. Turn Soffit Lights on														-
+//-----------------------------------------------------------------------------------------------------------------------------------------------
+			logInfo("RULE.PRESENCE.WIFI.Timer", "--> (tWelcomeHome = null). Allowing Welcome Home Routine to run.")
+			logInfo("RULE.PRESENCE.WIFI.Timer", "--> Unlocking House Door for " + PresenceWho + ".")
+			pushover("--> Welcome Home " + PresenceWho + ".")
+			sendCommand(vHouseLock, OFF)	
+			//Thread::sleep(800)
+//-----------------------------------------------------------------------------------------------------------------------------------------------
+//													When Dark Outside. Turn Soffit Lights on													-
+	//-----------------------------------------------------------------------------------------------------------------------------------------------
+	            if(NightState.state != OFF) {
+	            	
+					//if(Light_House_Soffit_Restore.state == -1) {
+					//	vDrivewaySoffit_Restore = ((Light_House_Soffit.state as DecimalType)).intValue
+					//	logInfo("RULE.PRESENCE.Arrival", "--> Storing Restore Values. Driveway Side: " +vDrivewaySoffit_Restore+"%")
+					//}
+					//if(vFrontGarageSoffit_Restore == -1){
+				//		vFrontGarageSoffit_Restore = ((vFrontGarageSoffit.state as DecimalType)).intValue
+				//		logInfo("RULE.PRESENCE.Arrival", "--> Storing Restore Values. Garge Front: " +vFrontGarageSoffit_Restore+"%")
+				//	}
+				//	if(vFrontHouseSoffit_Restore == -1){
+				//		vFrontHouseSoffit_Restore = ((vFrontHouseSoffit.state as DecimalType)).intValue
+				//		logInfo("RULE.PRESENCE.Arrival", "--> Storing Restore Values. House Front: " +vFrontHouseSoffit_Restore+"%")
+				//	}
+				
+	            	logInfo("RULE.PRESENCE.WIFIGPS", "--> Turing Soffit lights ON. Reason: NightState = ON")                 
+	                sendCommand(vFrontGarageSoffit, 80)
+					sendCommand(Light_House_Soffit, 70)
+					if((gPresent.state == ON) && ((new LocalTime().getLocalMillis()) >= (new LocalTime(22, 30, 0, 0).getLocalMillis()) || (new LocalTime().getLocalMillis()) <= (new LocalTime(7, 0, 0, 0).getLocalMillis()))){
+						logInfo("RULE.PRESENCE.WIFIGPS", "--> Someone is home and its past 10:30pm. Not turning on Front Lights")
+						} else {
+						sendCommand(vFrontHouseSoffit, 80)			//font of house soffit lights
+					}
+					sendCommand(vEntranceStairLights, 5)		//entrance stairwell lights
+					/*
+				//	logInfo("RULE.PRESENCE.WIFIGPS", "--> Turing Soffit lights ON. Reason: NightState = ON")
+	            //       tWelcomeHome = createTimer(now.plusMinutes(arrivalontime)) [|
+	            //            logInfo("RULE.PRESENCE.WIFIGPS.Timer", "--> Turning Soffit Lights OFF. Reason: tWelcomeHome expired.")
+				//			sendCommand(Light_House_Soffit, vDrivewaySoffit_Restore)
+				//			sendCommand(vFrontGarageSoffit, vFrontGarageSoffit_Restore)
+				//			sendCommand(vFrontHouseSoffit, vFrontHouseSoffit_Restore)
+				//			sendCommand(vEntranceStairLights, 0)
+				//			tWelcomeHome = null
+				//			vDrivewaySoffit_Restore = null
+				//			vFrontGarageSoffit_Restore = null
+				//			vFrontHouseSoffit_Restore = null
+	              //          ]
+	                
+	          	}
+                
+			}
+			else{
+				//WHEN ACTIVE 
+				logInfo("RULE.PRESENCE.WIFIGPS", "--> ATTN: Routine Currently Active (tWelcomeHome !== null)")
+				logInfo("RULE.PRESENCE.WIFIGPS", "--> ATTN: Due to Active Routine in Past 3 Minutes. Skipping Arrival Routine for " + PresenceWho + ".")
+				pushover("--> Presence Routine Currently (tWelcomeHome !== null)")
+			}
+		}
+end
+*/
+
+ //******************************************************************************************************************************************************************************
+//lighting
+//***
+
+/*
+rule "TEST"
+when
+	Item vSideGarageSoffit changed
+then
+	logInfo("RULE.RUNNING", "### TEST ###")
+{	//gDoorSensorsTime?.members.filter(dt|dt.name == door.name+"_LastUpdate").head.postUpdate(new DateTimeType)
+	gSoffitLights.members.filter[s|s.state == ON || s.state > 0].forEach[ light |
+    	logInfo("RULE.gSoffitLights", "--> Soffit Light ON: "+light.name+" @ "+light.state+"%")
+    	gSoffitRestore.members.filter(restore|restore.name == light.name+"_Restore").head.postUpdate((light.state as DecimalType).intValue)
+		logInfo("RULE.gSoffitLights", "--> Setting "+light.name+"_Restore to "+light.state+"%")
+	]
+}
+end
+*/
+
+/*
+rule "Garage Door Open - Soffit Lights  ON"
+when
+    Item GarageDoorFront12Contact changed from CLOSED to OPEN or
+    Item GarageDoorFront16Contact changed from CLOSED to OPEN
+then
+logInfo("RULE.RUNNING.-04-", "### Garage Door Open - Soffit Lights  ON ###")
+{
+
+            if(NightState.state != OFF && vFrontGarageSoffit.state == 0 && onByGarageDoor == 0) {                 
+                sendCommand(vFrontGarageSoffit, ON)
+                onByGarageDoor = 1
+				logInfo("RULE.GARAGEDOOR.Opening", "--> Garage Door OPENED. Turing Soffit lights ON. Reason: Past Sunset")
+                }
+}
+end
+
+rule "Front Garage Door CLOSED - Soffit Lights OFF"
+when
+    Item GarageDoorFront12String changed to Closing or
+    Item GarageDoorFront16String changed to Closing
+then
+logInfo("RULE.RUNNING.-04-", "### Front Garage Door CLOSED - Soffit Lights OFF ###")
+{
+	pushover("detected garage door closing"  + GarageDoorFront12String.state )
+            if((vFrontGarageSoffit.state > 0 && onByGarageDoor == 1) && (GarageDoorFront12Contact.state == CLOSED || GarageDoorFront16Contact.state == CLOSED)) {
+				logInfo("RULE.GARAGEDOOR.Closing", "--> Creating 2 min Timer to turn Garage Soffit Lights OFF. Reason: Door Closed & Lights on previously due to Door Opening")
+                    createTimer(now.plusMinutes(2)) [|
+                        sendCommand(vFrontGarageSoffit, OFF)
+                        onByGarageDoor = 0
+						logInfo("RULE.GARAGEDOOR.Closing", "--> Turning Soffit Lights OFF. Reason: 2 Minute Timer Ended & Garage Door Closed")
+                        ]
+                }
+}
+end
+*/

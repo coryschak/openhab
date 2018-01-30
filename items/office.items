@@ -1,0 +1,7 @@
+//office door sensor
+Contact	 	vOfficeDoor                 "Office Door [%s]"                      <door>		 (gDoorSensors)	{mqtt="<[openhab:house/office/door:state:default"}
+Contact	 	vOffice_ClosetDoor_Left     "Office Closet Door (Left) [%s]"        <door>		 (gDoorSensors)	{mqtt="<[openhab:house/office/closetdoor_left:state:default"}
+Contact	 	vOffice_ClosetDoor_Right    "Office Closet Door (Right) [%s]"       <door>		 (gDoorSensors)	{mqtt="<[openhab:house/office/closetdoor_right:state:default"}
+
+Dimmer	    vOfficeLights	            "Office Pot Lights[%d %%]" 		<light>		(gOFFWhenNoPresence, gDimmers, gLights) 	{ channel="zwave:device:160ec2a0602:node35:switch_dimmer" }
+Number	    vOfficeLights_Scene	        "Office Pot Lights_Scene" 		<light>		 	                                        { channel="zwave:device:160ec2a0602:node35:scene_number" }

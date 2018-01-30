@@ -1,0 +1,9 @@
+sitemap mbr label="Master Bedroom" {
+    Frame label="Lighting Control" icon="icon" {
+        Slider item=vMBR_HeadboardPots icon="slider" switchSupport
+        Slider item=vMBR_CenterPots	icon="slider" switchSupport
+    }
+    Frame label="Soffit Lights" icon="icon" {
+        Slider item=vFrontHouseSoffit icon="slider" switchSupport
+    }
+}

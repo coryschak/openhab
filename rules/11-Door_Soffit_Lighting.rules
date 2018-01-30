@@ -1,0 +1,378 @@
+import org.eclipse.xtext.xbase.lib.Functions
+import org.eclipse.smarthome.model.script.actions.Timer
+import java.util.Map
+
+//***********************************************************************************************************************************************
+// 													DOOR AND SOFFIT LIGHTING FUNCTION DIY WIP HELPPP MEEE			 																*
+//***********************************************************************************************************************************************
+
+val Map<String, Timer> timers = newHashMap
+val Functions$Function5<GenericItem, String, String, Integer, Map<String, Timer>, Boolean> DoorTriggerSoffitLighting = [
+    doorSensor, 	// Door Sensor for OPEN / CLOSED 
+    doorLabel, 		// Friendly name for the Door being used
+    lighting,		// Virtual Switch used to trigger Lighting. This switch turns ON and then you create a rule based on that switches change state to trigger lights.
+    time,			// Number of seconds the lights are to remain ON before turning OFF.
+    timers |		// HashMap used to store active timers in.
+    logInfo("-11-Door_Soffit_Light.F1", "### Function Called: DoorTriggerSoffitLighting for "+doorSensor.name+" ("+doorLabel+") ###")
+	//vPatioDoor1_LastUpdate.postUpdate( new DateTimeType() )
+{	
+		logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> "+doorLabel+" OPENED")
+		if(vDoorOpenLights_Override.state == OFF){
+			if(NightState.state == ON) {
+				/*
+				val welcomehometimeout = (SoffitTimerTimeout.state as DecimalType).intValue
+				if(time != welcomehometimeout) {
+					var int timeout = welcomehometimeout
+					logInfo("RULE.DOORSENSOR.FUNCTION."+ doorSensor.name, "<-- Time: "+time+" !=  welcomehometimeout: "+welcomehometimeout+". Setting timeout to "+timeout)
+				} else {
+					var int timeout = time
+					logInfo("RULE.DOORSENSOR.FUNCTION."+ doorSensor.name, "<-- Timeout set to = "+timeout)
+				}*/
+				//check to see if a timer has been previously created and:
+				// 1. Timer has been created and active.
+				// 2. Check the time to make sure its running, if not cancel and remove the timer from hashmap
+				// 3. if time is still runnning, lets reschedule the timer to keep the lights on as someone opened the door again
+				// **************************************************************************************************************
+				
+						//#1. Timer has been created and active.
+				var String timerKey = doorSensor.name
+			    if (timers.containsKey(timerKey)) { 	//timer running
+			    	logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Soffit Lighting Timer: " + timerKey  + " = Active")
+			        var Timer timerTmp = timers.get(timerKey)
+			        	//#2. Check the time to make sure its running, if not cancel and remove the timer from hashmap
+			       	if(time == 0) {
+			            timerTmp.cancel()
+			            timers.remove(timerKey)
+			            logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> " + timerKey + " Timer Cleared" )
+       				} else {
+       					//#3. if time is still runnning, lets reschedule the timer to keep the lights on as someone opened the door again
+						logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "-->  Timer (" + timerKey + ") Active. Rescheduling for " + time + " Seconds")
+						timerTmp.reschedule(now.plusSeconds(time))
+
+					}
+       			 } else { 	// <-- No timer is running. Lets do the following:
+
+							// 1. Log restore values of all soffit lights
+							// 2. Turning Lights on pertaining to the specific door doorSensor.name == vPatioDoor1, vHouseDoor, vGarageDoor, etc
+       			 			// 3. Cancel any active timers from other doors that might of opened before this door
+       			 			// 4. create timer to restore all lights back to original state
+       			 			// ************************************************************
+
+						//#1. Log restore values of all soffit lights
+						gSoffitLights.members.forEach[ light |
+										gSoffitRestore.members.forEach[ restore |
+											if (restore.name == light.name+"_Restore") {
+												if (restore.state == -1){
+													restore.postUpdate((light.state as DecimalType).intValue)
+													logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Storing Restore Values: "+restore.name+" = "+restore.state+"%")
+												}
+											}
+										]
+									]
+
+						//#2. Turning Lights on pertaining to the specific door
+						//Patio Door Lighting
+						if (lighting == "vPatioDoor1"){
+							if((vFrontGarageSoffit.state as DecimalType).intValue < 50){
+								vFrontGarageSoffit.sendCommand(50)
+							}
+							if((vSideGarageSoffit.state as DecimalType).intValue < 100){
+								vSideGarageSoffit.sendCommand(100)
+							}
+							if((Light_House_Soffit.state as DecimalType).intValue < 5){
+								Light_House_Soffit.sendCommand(5)
+							}
+							logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Turning Lights on for: "+lighting)
+						//House Door Lighting
+						} else if (lighting == "vHouseDoor") {
+							if((vFrontGarageSoffit.state as DecimalType).intValue < 100){
+								vFrontGarageSoffit.sendCommand(100)
+							}
+							if((Light_House_Soffit.state as DecimalType).intValue < 100){
+								Light_House_Soffit.sendCommand(100)
+							}
+							if((new LocalTime().getLocalMillis()) >= (new LocalTime(6, 30, 0, 0).getLocalMillis()) && (new LocalTime().getLocalMillis()) <= (new LocalTime(8, 0, 0, 0).getLocalMillis())){
+								vFrontHouseSoffit.sendCommand(100)
+							}
+							logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Turning Lights on for: "+lighting)
+						//Garage Door Lighting
+						} else if (lighting == "vGarageDoor") {
+							if((vFrontGarageSoffit.state as DecimalType).intValue < 100){
+								vFrontGarageSoffit.sendCommand(100)
+							}
+							if((vSideGarageSoffit.state as DecimalType).intValue < 100){
+								vSideGarageSoffit.sendCommand(100)
+							}
+							if((Light_House_Soffit.state as DecimalType).intValue < 75){
+								Light_House_Soffit.sendCommand(75)
+							}
+							logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Turning Lights on for: "+lighting)
+											//Garage Door Lighting
+						} else if (lighting == "vOfficeDoor") {
+							if((vFrontGarageSoffit.state as DecimalType).intValue < 100){
+								vFrontGarageSoffit.sendCommand(14)
+							}
+							if((vSideGarageSoffit.state as DecimalType).intValue < 100){
+								vSideGarageSoffit.sendCommand(100)
+							}
+							logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Turning Lights on for: "+lighting)
+						}
+						
+						//#3. Cancel any active timers from other doors that might of opened before this door
+	       				logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "-->  Checking for Active Timers from Other Doors")
+	       				 gSoffitDoorSensors.members.forEach[ doorsensortimer |
+	       				 	    logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "-->  Checking Timer ("+doorsensortimer.name+")")
+								var String doorsensorKey = doorsensortimer.name
+								if (timers.containsKey(doorsensorKey)) { 
+									logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "<-- Timer "+doorsensortimer.name+" is ACTIVE. Canceling.")
+									var Timer sensortimerTmp = timers.get(doorsensorKey)
+									sensortimerTmp.cancel()
+									timers.remove(doorsensorKey)
+								}
+							]
+
+						//#4. create timer to restore all lights back to original state
+							logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "--> Creating Restore Timer ("+time+"sec) for "+doorSensor.name)	
+					            timers.put(timerKey, createTimer(now.plusSeconds(time)) [|
+					            	timers.remove(doorSensor.name)
+					            	//gSoffitDoorLightSwitch.sendCommand(OFF)
+					            	//lighting.sendCommand(OFF)
+					            	logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "<-- "+doorSensor.name+" Expired. Reason: " + time + " second Timer Expired")
+										gSoffitLights.members.forEach[ light |
+											gSoffitRestore.members.forEach[ restore |
+												if (restore.name == light.name+"_Restore") {
+													if (restore.state !== "-1"){
+														light.sendCommand((restore.state as DecimalType).intValue)
+														logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "<-- Restoring "+light.name+" to "+restore.state+"%")
+														restore.postUpdate(-1)
+													}
+												}
+											]
+										]
+						     	])
+						         	
+
+       			}		
+			} else {
+					logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "<-- NightState != Dark")
+				}
+		} else {
+			logInfo("-11-Door_Soffit_Light.F1."+ doorSensor.name, "<-- Ratio Door Lights Override ENABLED. Skipping Lighting")
+		}	
+}
+    true
+]
+
+//-------------------------------------------------	END OF FUNCTIONS ---------------------------------------------------------------------------
+//														 -----
+//------------------------------------------------- RULES BEGIN BELOW --------------------------------------------------------------------------
+
+
+//***********************************************************************************************************************************************
+// 															Door Sensor Lighting Override																*
+//															1. Set Override to ON
+//															2. Cancel all timers that belong in gSoffitDoorSensors
+//															3. Set gSoffitRestore values to -1 & set gSoffitDoorLightSwitch to OFF (Virtual switch triggered for door lighting)
+//***********************************************************************************************************************************************
+rule "Door Sensor Lighting Override"
+when
+	Item vDoorOpenLights_Override changed from OFF to ON or
+	Item vDoorOpenLights_Override changed from ON to OFF
+then
+	logInfo("-11-Door_Soffit_Light.R1", "### Door Sensor Lighting Override ###")
+{	
+	var Number sendMessage = 0
+	val StringBuilder BuildMessage = new StringBuilder
+	if (vDoorOpenLights_Override.state == ON ){
+		logInfo("-11-Door_Soffit_Light.R1", "--> Door Lighting Override = Disabled Lighting")
+		//<-- Prevent Door Lighting -->
+    	//1. If any timers are active. Cancel them.
+						pushover(null, null,"Preventing Door Lights", null,"Override: Door Lighting", null, null, 0, null)	
+  	       				 gSoffitDoorSensors.members.forEach[ doorsensortimer |
+	       				 	    logInfo("-11-Door_Soffit_Light.R1", "-->  Checking Timer ("+doorsensortimer.name+")")
+								var String doorsensorKey = doorsensortimer.name
+								if (timers.containsKey(doorsensorKey)) { 
+									logInfo("-11-Door_Soffit_Light.R1", "--> Timer "+doorsensortimer.name+" is ACTIVE. Canceling.")
+									var Timer sensortimerTmp = timers.get(doorsensorKey)
+									sensortimerTmp.cancel()
+									timers.remove(doorsensorKey)
+									//gSoffitRestore.sendCommand(-1)
+									BuildMessage.append("- "+doorsensortimer.name+ "\n")
+									sendMessage	= 1
+									//pushover(null, null,"Canceling Active Timer: "+doorsensortimer.name, null,"Preventing Door Lighting", null, null, 0, null)	
+									
+								}
+							]
+    }
+    else if(vDoorOpenLights_Override.state == OFF){
+		pushover(null, null,"Allowing Door Lights", null,"Override: Door Lighting", null, null, 0, null)	
+		logInfo("-11-Door_Soffit_Light.R1", "<-- Door Lighting Override = Allow Lighting")
+		//<-- Allow Door Lighting -->
+    	//2. Restore all lights back to original state
+		if(NightState.state == ON) {
+			gSoffitLights.members.forEach[ light |
+				gSoffitRestore.members.forEach[ restore |
+					if (restore.name == light.name+"_Restore") {
+						if (restore.state != -1){
+							light.sendCommand((restore.state as DecimalType).intValue)
+							logInfo("-11-Door_Soffit_Light.R1", "<-- Restoring "+light.name+" to "+restore.state+"%")
+							restore.postUpdate(-1)
+							sendMessage = 2
+							BuildMessage.append("- "+light.name+ " = "+restore.state+"%\n")
+						}
+					}
+				]
+			]
+		} else {
+			//Its not dark out. Lets make sure soffit restore is nulled out to -1
+			gSoffitRestore.sendCommand(-1)
+		}
+
+	}
+	//send pushover report of what was canceled / restored
+	if(sendMessage == 1) {	
+		val message = "Preventing Door Lights.\nCanceling Active Timers:\n\n" + BuildMessage+"\n"
+		pushover(null, null, message, null, "Override: Door Lighting", null, null, 0, null) 
+	} else if(sendMessage == 2){
+		val message = "Allowing Door Lights.\nRestoring Lights:\n\n" + BuildMessage+"\n"
+		pushover(null, null, message, null, "Override: Door Lighting", null, null, 0, null) 
+	}
+}
+end
+
+/*
+rule "Config Loaded. Setting all door open/Soffit Light Triggers to OFF "
+when
+    System started
+then
+logInfo("-11-Door_Soffit_Light.R2", "### Config Loaded. Setting all door open/Soffit Light Triggers to OFF ###")
+{
+	logInfo("-11-Door_Soffit_Light.R2", "--> Setting SoffitDoorSensors = OFF")
+	gSoffitDoorLightSwitch.postUpdate(OFF)
+}
+end
+*/
+
+//***********************************************************************************************************************************************
+// 															HOUSE DOOR SOFFIT LIGHTING															*
+//***********************************************************************************************************************************************
+rule "House Door OPENED: Trigger Soffit Lighting Function"
+when
+	Item vHouseDoor changed from CLOSED to OPEN or
+	Item vHouseLock_Proxy changed from ON to OFF or
+	Item vHouseLock_Proxy received command OFF
+then
+	logInfo("-11-Door_Soffit_Light.R3", "### House Door OPENED: Trigger Soffit Lighting Function ###")
+{	
+	logInfo("-11-Door_Soffit_Light.R3", "--> Calling Function DoorTriggerSoffitLighting for vHouseDoor")
+	DoorTriggerSoffitLighting.apply(vHouseDoor, "R3: House Door", "vHouseDoor", 180, timers)
+}
+end	
+
+//***********************************************************************************************************************************************
+// 															PATIO DOOR SOFFIT LIGHTING	 														*
+//***********************************************************************************************************************************************
+rule "Patio Door1 OPENED: Trigger Soffit Lighting Function"
+when
+	Item vPatioDoor1 changed from CLOSED to OPEN
+then
+	logInfo("-11-Door_Soffit_Light.R5", "### Patio Door OPENED: Trigger Soffit Lighting Function ###")
+{	
+	logInfo("-11-Door_Soffit_Light.R5", "--> Calling Function DoorTriggerSoffitLighting for vPatioDoor1")
+	DoorTriggerSoffitLighting.apply(vPatioDoor1, "R5: Patio Door","vPatioDoor1", 150, timers)
+
+}
+end	
+/*
+rule "Patio Door1 OPENED: Trigger Soffit Lighting Function"
+when
+	Item vOfficeDoor changed from CLOSED to OPEN
+then
+	logInfo("-11-Door_Soffit_Light.TEST", "### OFFICE DOOR CONTACT MQTT ###")
+{	
+	logInfo("-11-Door_Soffit_Light.TEST", "--> Calling Function DoorTriggerSoffitLighting for vOfficeDoor")
+	DoorTriggerSoffitLighting.apply(vOfficeDoor, "TEST: Office DOor","vOfficeDoor", 10, timers)
+
+}
+end
+*/	
+/*
+rule "Patio Door1 OPENED: Turn Soffit Lights ON"
+when
+	Item vPatioDoor1_Soffit changed from OFF to ON
+then
+	logInfo("-11-Door_Soffit_Light.R6", "### Patio Door1 OPENED: Turn Soffit Lights ON ###")
+{	
+		logInfo("-11-Door_Soffit_Light.R6", "--> Turning Soffit Lights ON for Patio Door1")
+		if((vFrontGarageSoffit.state as DecimalType).intValue < 50){
+			vFrontGarageSoffit.sendCommand(50)
+		}
+		
+		if((vSideGarageSoffit.state as DecimalType).intValue < 100){
+			vSideGarageSoffit.sendCommand(100)
+		}
+		
+		if((Light_House_Soffit.state as DecimalType).intValue < 5){
+			Light_House_Soffit.sendCommand(5)
+		}
+		logInfo("-11-Door_Soffit_Light.R6", "<-- All Soffit Lights ON for Patio Door1")
+
+}
+end	
+*/
+//***********************************************************************************************************************************************
+// 															GARAGE DOOR SOFFIT LIGHTING	 														*
+//***********************************************************************************************************************************************
+
+/*
+rule "Garage Door OPENED: Turn Soffit Lights"
+when
+	Item vGarageDoor_Soffit changed from OFF to ON
+then
+	logInfo("-11-Door_Soffit_Light.R7", "### Garage Door OPENED: Trigger Soffit Lighting Function ###")
+{
+		logInfo("-11-Door_Soffit_Light.R7", "--> Turning Soffit Lights ON for Garage Door")
+		if((vFrontGarageSoffit.state as DecimalType).intValue < 100){
+			vFrontGarageSoffit.sendCommand(100)
+		}
+		if((vSideGarageSoffit.state as DecimalType).intValue < 100){
+			vSideGarageSoffit.sendCommand(100)
+		}
+		if((Light_House_Soffit.state as DecimalType).intValue < 75){
+			Light_House_Soffit.sendCommand(75)
+		}
+		
+}
+end	
+*/
+rule "Garage Door OPENED: Trigger Soffit Lighting Function ON"
+when
+	Item vGarageDoor changed from CLOSED to OPEN or
+	Item vGarageLock_Proxy changed from ON to OFF
+then
+	logInfo("-11-Door_Soffit_Light.R8", "### Garage Door OPENED: Trigger Soffit Lighting Function ON###")
+{	
+	logInfo("-11-Door_Soffit_Light.R8", "--> Calling Function DoorTriggerSoffitLighting for vGarageDoor")
+	DoorTriggerSoffitLighting.apply(vGarageDoor, "R8: Garage Door","vGarageDoor", 150, timers)
+}
+end	
+
+
+
+//***********************************************************************************************************************************************
+// 															12' & 16' GARAGE OVERHEAD DOOR SOFFIT LIGHTING	 														*
+//***********************************************************************************************************************************************
+
+rule "Garage Door Open - Soffit Lights  ON"
+when
+	Item GarageDoorFront16String changed from Closed to OPENING or
+	Item GarageDoorFront12String changed from Closed to OPENING or
+    Item GarageDoorFront12Contact changed from CLOSED to OPEN or
+    Item GarageDoorFront16Contact changed from CLOSED to OPEN
+then
+logInfo("-11-Door_Soffit_Light.R9", "### Garage Door Open - Soffit Lights  ON ###")
+{
+			DoorTriggerSoffitLighting.apply(GarageDoorFront12Contact, "R9: Garage Overhead Door (Front)", "vGarageDoor", 300, timers)
+}
+end
+

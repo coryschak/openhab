@@ -1,0 +1,281 @@
+//import org.eclipse.xtext.xbase.lib.Functions
+//import java.util.HashMap
+//import org.eclipse.smarthome.model.script.actions.Timer
+//import java.util.Map
+var test = 0
+var Number colorTemperature = 5000
+var status = null
+var int restoreVal = 0
+val int lowBatteryThreshold = 10
+
+var Number fireplace_hvac_fan_circulation = 0 //variable to determine if HVAC Fan circulation is ON(1)/OFF(0) due to fireplace temp rise. 
+
+
+rule "Office Door via MQTT"
+when
+	Item vOfficeDoor changed
+then
+	logInfo("Development.R1", "### Office Door via MQTT ###")
+{	
+
+	//var hsb = HSBType.fromRGB(0,255,0)
+	if (vOfficeDoor.state == OPEN) {
+		logInfo("Development.R1", "--> Office Door OPENED")
+		//vLEDStrip_color.sendCommand(ON)
+		//sendCommand(vLEDStrip_color,hsb)
+	} else {
+		logInfo("Development.R1", "-<-- Office Door CLOSED")
+		//vLEDStrip_color.sendCommand(ON)
+		//var hsb = HSBType.fromRGB(255,0,0)
+		//sendCommand(vLEDStrip_color,hsb)
+	}
+}
+end
+
+rule "Arduino MQTT Connection Status"
+when
+	Item vArduino_MQTT_Status received update
+then
+	logInfo("Development.R4", "### Arduino MQTT Connection Status ###")
+{	
+	if(vArduino_MQTT_Status.state == "connected") {
+		pushover(null, null, "Inital Boot.. Connected", null, "Arduino MQTT", null, null, 0, null) 
+	} else if(vArduino_MQTT_Status.state == "reconnected") {
+		pushover(null, null, "Connection Lost... Reconnected", null, "Arduino MQTT", null, null, 0, null) 
+
+	}
+	
+}
+end
+/*
+rule "Cycle HVAC Fan when Gas Fireplace is ON"
+when
+	Item LivingRoomTemperature changed
+then
+	logInfo("Development.R2", "### Cycle HVAC Fan when Gas Fireplace is ON ###")
+{	
+	//Check living room temperature and cycle HVAC Fan if fireplace is on under the following conditions:
+	//1. Outside temp is < 0C (Cold  out -- good reason to use the fireplace)
+	//2. Living room temp is 1F warmer then actual house temp (living room is warmer then normal so fireplace must be on)
+	//3. Variable fireplace_hvac_fan_circulation == 0  (variable is set to OFF so we know this rule was triggered specifically for HVAC Circulation)
+
+	if (((Temperature_F.state < 32) && LivingRoomTemperature.state > ((runtime_actualTemperature.state as DecimalType).intValue + 3) && fireplace_hvac_fan_circulation == 0) ) {
+		logInfo("Development.R2", "--> Living Room Temp Rising. Turning HVAC Fan circulation ON. (Fireplace most likely ON)")
+		sendCommand(settings_fanMinOnTime, 60)
+		fireplace_hvac_fan_circulation = 1
+		pushover ("Turning HVAC Fan circulation ON. (Fireplace most likely ON)")
+	} else if (((Temperature_F.state < 32) && LivingRoomTemperature.state > ((runtime_actualTemperature.state as DecimalType).intValue + 1) && fireplace_hvac_fan_circulation == 1) ){
+		logInfo("Development.R2", "--> Living Room Temp Dropped. Turning HVAC Fan circulation OFF. (Fireplace most likely OFF)")
+		sendCommand(settings_fanMinOnTime, 0)
+		fireplace_hvac_fan_circulation = 0
+		pushover("Turning HVAC Fan circulation OFF. (Fireplace most likely OFF)")
+	}
+
+}
+end
+*/
+
+
+/*
+rule "Battery Monitor"
+//when Time cron "0 0 19 * * ?"
+when
+	Item vTest changed
+then
+	logInfo("RULE.RUNNING.BATTERYCHECK", "### CHECKING BATTERY AND ALERTING ###")
+	val StringBuilder BatteryReport = new StringBuilder
+	  gBatteryStatus.allMembers.filter(battery | battery.state < lowBatteryThreshold).forEach[ item | 
+	  	logInfo("RULE.RUNNING.BATTERYCHECK", item.name+" is "+item.state)
+	  	BatteryReport.append(item.name + ": " + item.state+"%\n")
+        ]
+        val message = "Low Battery Levels:\n\n" + BatteryReport 
+        logInfo("RULE.RUNNING.BATTERYCHECK", message)
+        pushover(null, null, message, null, "Low Battery Warning", null, null, 2, null) 
+       // pushover(null, null, message, null,"Low Battery Alert", null, null, 1, null) 
+	  	
+end
+*/
+//if (! Update_time.allMembers.filter(member | now.minusMinutes(30).isAfter((member.state as DateTimeType).calendar.timeInMillis)).empty) {
+
+
+/*
+rule "Battery Monitor"
+//when Time cron "0 0 19 * * ?"
+when
+	Item vTest changed
+then
+	logInfo("RULE.RUNNING.BATTERYCHECK", "### CHECKING BATTERY AND ALERTING ###")
+	 if (!gBatteryStatus.allMembers.filter([state < lowBatteryThreshold]).empty) {
+        val report = gBatteryStatus.allMembers.filter([state instanceof DecimalType]).sortBy([state]).map[
+            name + ": " + state.format("%d%%")
+        ].join("\n")
+        
+        val message = "Battery levels:\n\n" + report + "\n\nRegards,\n\nopenHab"
+        
+        logInfo("RULE.RUNNING.BATTERYCHECK", message)
+    }
+	  	
+end
+*/
+
+
+
+
+/*	
+rule "Presence Arrival: Notify GPS/WiFi detected for OHiE"
+when
+		Item alexa_phoneGPS changed from OFF to ON or
+		Item alexa_phoneGPS changed from ON to OFF or
+		Item alexa_phoneWiFi changed from OFF to ON or
+		Item alexa_phoneWiFi changed from ON to OFF
+	then
+	Thread::sleep(600) 
+	logInfo("RULE.RUNNING.AlexaGPS.NOTIFY", "### Presence Arrival: Notify GPS/WiFi detected for Alexa ###")
+		if (alexa_phoneGPS.state == ON) {
+			logInfo("RULE.RUNNING.AlexaGPS.NOTIFY", "--> Alexa GPS: Arrival")
+			pushover(null, null,"Alexa GPS: Arrival", null,"Alexa GPS", null, null, 1, null) 
+		} else if (alexa_phoneGPS.state == OFF){
+			logInfo("RULE.RUNNING.alexaGPS.NOTIFY", "--> Alexa GPS: Departure")
+			pushover(null, null,"Alexa GPS: Departure", null,"Alexa GPS", null, null, 1, null) 
+		}
+		if (alexa_phoneWiFi.state == ON) {
+			pushover("Alexa WiFi: Connected")
+		} else if (alexa_phoneWiFi.state == OFF){
+			pushover("Alexa WiFi: Disconnected")
+		}
+	end
+*/
+
+/* 
+rule "TEST"
+when
+	Item vSiren changed to OFF
+then
+	logInfo("RULE.RUNNING.FUNCTION", "### House Door Test ###")
+{	
+	
+	DoorTriggerSoffitLighting.apply(vHouseDoor, "House Door", 15, timers)
+	logInfo("RULE.RUNNING.FUNCTION", "--> (House Door)")
+		//if(vFrontGarageSoffit.state == 0){
+			//sendCommand(vFrontGarageSoffit, 50)
+		//}
+
+}
+end
+*/
+/*
+rule "TEST"
+when
+	Item vSiren changed to ON
+then
+	logInfo("RULE.RUNNING", "### TEST Storing Values ###")
+{	//gDoorSensorsTime?.members.filter(dt|dt.name == door.name+"_LastUpdate").head.postUpdate(new DateTimeType)
+	gSoffitLights.members.forEach[ light |
+		gSoffitRestore.members.forEach[ restore |
+			if (restore.name == light.name+"_Restore") {
+				if (restore.state == -1){
+					restore.postUpdate((light.state as DecimalType).intValue)
+					logInfo("RULE.gSoffitLights1", "--> Storing Restore Values. "+restore.name+" = "+restore.state+"%")
+				}
+			}
+		]
+	]
+}
+end
+
+rule "TEST2"
+when
+	Item vSiren changed to OFF
+then
+	logInfo("RULE.RUNNING", "### TEST Restoring Values###")
+{	//gDoorSensorsTime?.members.filter(dt|dt.name == door.name+"_LastUpdate").head.postUpdate(new DateTimeType)
+	gSoffitLights.members.forEach[ light |
+		gSoffitRestore.members.forEach[ restore |
+			if (restore.name == light.name+"_Restore") {
+				if (restore.state != "-1"){
+					light.sendCommand((restore.state as DecimalType).intValue)
+					logInfo("RULE.gSoffitLights1", "--> Restoring "+light.name+" to "+restore.state+"%")
+					restore.postUpdate(-1)
+				}
+			}
+		]
+	]
+}
+end       
+*/
+
+/*
+rule "Dev Test Switch"
+when
+    Item vdev changed
+then
+logInfo("RULE.RUNNING", "### DEV CHANGED ###")
+	if (vEcosmart.state == ON) {
+						logInfo("RULE.RUNNING.ecosmart", "### Switch ON "+ vEcosmart.state +"###")
+						sendCommand(vEcosmart, OFF)
+
+					}
+					else {
+						logInfo("RULE.RUNNING.ecosmart", "### Switch OFF "+ vEcosmart.state +"###")
+						sendCommand(vEcosmart, ON)
+						}
+end
+
+rule "Reset EcoSmart Color Temp on Manual Switch ON"
+when
+    Item vEcosmart_colorTemperature received update
+then
+	logInfo("RULE.RUNNING.ecosmart", "### Ecosmart COlor "+ vEcosmart_colorTemperature.state +" Temp ###")
+    if(vEcosmart_colorTemperature.state == 2703){
+		
+		sendCommand(vEcosmart_colorTemperature, 5000)
+		pushover("Log on with color: 2703K")
+		logInfo("RULE.RUNNING.ecosmart", "### Ecosmart COlor "+ vEcosmart_colorTemperature.state +" Temp ###")
+		
+	}
+end
+*/
+
+/*
+rule "TEST"
+when
+	Item vSideGarageSoffit changed
+then
+	logInfo("RULE.RUNNING", "### TEST - set restore ###")
+{	
+	gSoffitLights.members.filter[s|s.state == ON || s.state > 0].forEach[ light |
+    	gSoffitRestore.members.filter[i|i.name == light.name+"_Restore"].forEach [ e | 
+			if(e.state == 0){
+				logInfo("RULE.DOORSENSOR.Patio.SetRestore", "--> CURRENT: Soffit Restore State: "+e.name+" = " +e.state+"%")
+				postUpdate(e, light.state)
+				logInfo("RULE.DOORSENSOR.Patio.SetRestore", "--> NOW: Soffit Restore State: "+e.name+" = " +e.state+"%")
+			}
+    	]
+	]
+}
+end
+
+
+rule "TEST Restore"
+when
+	Item vSideGarageSoffit changed
+then
+	logInfo("RULE.RUNNING", "### TEST - Restore and NULL ###")
+{	
+	gSoffitLights.members.forEach[light|
+    	gSoffitRestore.members.filter[i|i.state != 0 && i.name == light.name+"_Restore"].forEach [ i | 
+			
+				//sendCommand(light, e.state)
+				logInfo("RULE.DOORSENSOR.Patioe", "-->Restoring "+light.name+" to "+i.state+"% & 0'ing Restore Value")
+				//restoreVal = ((i.state as DecimalType)).intValue
+				sendCommand(light, restoreVal)
+				postUpdate(i, 0)
+			
+    	]
+	]
+}
+end
+
+*/
+
+

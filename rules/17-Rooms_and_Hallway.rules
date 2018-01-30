@@ -1,0 +1,77 @@
+var Timer tHallwayLights = null
+
+
+//***********************************************************************************************************************************************
+// 															HALLWAY LIGHTING vi DOOR OPEN															*
+//***********************************************************************************************************************************************
+rule "Hallway Lighting From Door OPENING"
+when
+	Item vOfficeDoor changed from CLOSED to OPEN or
+    Item vMBRdoor changed from CLOSED to OPEN 
+then
+	logInfo("-17-Rooms_and_Hallway.R1", "### Hallway Lighting From Door OPENING ###")
+{	
+    if (vHallwayLights.state == 0) {
+        logInfo("-17-Rooms_and_Hallway.R1", "--> Hallway Lights are OFF. Checking for ON Command:")
+        if(NightState.state == OFF) {
+            logInfo("-17-Rooms_and_Hallway.R1", "--> Day Time: ON to 100%")
+                vHallwayLights.sendCommand(100)
+        } else {
+            logInfo("-17-Rooms_and_Hallway.R1", "--> Night Time: ON based on TimeOfDay and Door Status (Michaels Room)")
+            if (now.getHourOfDay > 16 && now.getHourOfDay < 19 ) {            // 5:00PM <-> 7:00PM
+                logInfo("-17-Rooms_and_Hallway.R1", "--> Time Rule: 4:00PM <-> 7:00PM. Setting Lights to 15%")
+                vHallwayLights.sendCommand(15)
+            } else if(now.getHourOfDay > 19 && now.getHourOfDay < 23 ) {      // 7:00PM <-> 12:00AM
+                logInfo("-17-Rooms_and_Hallway.R1", "--> Time Rule: 7:00PM <-> 12:00AM")
+                if(vOfficeDoor.state == CLOSED) {
+                    vHallwayLights.sendCommand(1)
+                    logInfo("-17-Rooms_and_Hallway.R1", "--> Michaels Door is Closed. Setting 1%")
+                }
+            } else if(now.getHourOfDay > 0 && now.getHourOfDay < 7 ) {        // 12:00AM <-> 7:00AM
+                logInfo("-17-Rooms_and_Hallway.R1", "--> Time Rule: 12:00AM <-> 7:00am")
+                if(vOfficeDoor.state == CLOSED) {
+                    logInfo("-17-Rooms_and_Hallway.R1", "--> Michaels Door is Closed. Setting 1%")
+                    vHallwayLights.sendCommand(1)
+                } 
+            }
+        }
+    }
+}
+end	
+
+
+//***********************************************************************************************************************************************
+// 															HALLWAY LIGHTING OFF TIMER															*
+//***********************************************************************************************************************************************
+rule "vHallwayLights Off Timer"
+when
+    Item vHallwayLights changed
+then
+logInfo("-17-Rooms_and_Hallway.R2", "### vHallwayLights Off Timer ###")
+{ 
+	if(vHallwayLights.state > 0) {
+		if(tHallwayLights === null) { 
+			logInfo("-17-Rooms_and_Hallway.R2", "--> Office Lights turned ON. Creating OFF timer tHallwayLights")
+			tHallwayLights = createTimer(now.plusMinutes(1)) [|
+					sendCommand(vHallwayLights, 0)
+					tHallwayLights = null
+					logInfo("-17-Rooms_and_Hallway.R2", "--> Timer Expired. Turning Lights off")
+			]
+		} else {
+			tHallwayLights.reschedule(now.plusMinutes(2))
+			logInfo("-17-Rooms_and_Hallway.R2", "--> Timer Active. Rescheduling tHallwayLights")
+		}	
+	} else if(vHallwayLights.state == 0){
+        logInfo("-17-Rooms_and_Hallway.R2", "--> Hallway Lights == OFF")
+		if(tHallwayLights !== null) {
+            logInfo("-17-Rooms_and_Hallway.R2", "--> Canceling Active Timer: tHallwayLights")
+			tHallwayLights.cancel()
+			tHallwayLights = null
+		}
+	}
+}
+end
+
+//***********************************************************************************************************************************************
+// 																			                        											*
+//***********************************************************************************************************************************************

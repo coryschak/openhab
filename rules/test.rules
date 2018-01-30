@@ -1,0 +1,48 @@
+/*val Map<String, Timer> test = newHashMap
+
+rule "TEST"
+when
+	Item vTest changed
+then
+	logInfo("RULE.RUNNING.FUNCTION", "### TEST###")
+{	
+	if(vTest.state == ON) {
+		//sendCommand(vHouseLock+"_Proxy", ON)
+		logInfo("test", "--> Test:"+vTest.state)
+	} else {
+		//sendCommand(vHouseLock+"_Proxy", OFF)
+		logInfo("test", "--> Test:"+vTest.state)
+		logInfo("test", "--> Before:"+test)
+		test.put("Test")
+		logInfo("test", "--> After:"+test)
+
+	}
+
+
+	//if(!test)
+
+	//pushover("Test Switch: "+vTest.state)
+	//pushover("Furnace: "+settings_hvacMode.state)
+	//DoorTriggerSoffitLighting.apply(vHouseDoor, "House Door", vHouseDoor_Soffit, 30, timers)
+	//ecobeeSetHold("310191946048", null, null, "home", null, null, "nextTransition", null)
+	//ecobeeResumeProgram("310191946048", true)
+}
+end
+*/
+
+rule "TEST"
+when
+	Item vTest changed
+then
+	logInfo("RULE.RUNNING.FUNCTION", "### TEST###")
+{	
+	if(vTest.state == ON) {
+		//LgTvAppExecute.sendCommand("Internet")
+		postUpdate(LgTvBrowserRemote,"http://192.168.2.3:8080/basicui/app")
+	} else {
+		//LgTvAppExecute.sendCommand("Internet")
+		postUpdate(LgTvBrowserRemote,"http://www.openhab.org/")
+	}
+
+}
+end

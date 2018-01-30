@@ -1,0 +1,457 @@
+import org.eclipse.smarthome.model.script.actions.Timer
+import org.eclipse.xtext.xbase.lib.Functions
+import java.util.Map
+
+
+//***********************************************************************************************************************************************
+// 													Door Lock Status Notifications integrated with OpenHAB			 																*
+//***********************************************************************************************************************************************
+val Functions$Function5<String, GenericItem, GenericItem, GenericItem, String, Boolean> alarmRawParser = [
+    alarmRaw,
+    lockItem,
+	lockProxy,
+    lockItemStatus,
+    lockLabel |
+    
+    logInfo("-10-.Locks-AutoLock.F1", "### Function Called: alarmRawParser for "+lockItem.name+" ("+lockLabel+") ###")
+
+    val String notification = transform("JSONPATH", "$.notification", alarmRaw)
+    if (notification.contains("JAMMED")) {
+    	lockItemStatus.postUpdate("JAMMED")
+        //pushover(null, null, lockLabel +" JAMMED", null, "Lock: Status Update", null, null, 1, null) 
+    } else if (notification.contains("MANUAL_LOCK")) {
+			lockItem.postUpdate(ON)
+			lockProxy.postUpdate(ON)
+			lockItemStatus.postUpdate("LOCKED")
+			pushover(null, null, lockLabel +" LOCKED (Knob)", null, "Lock: Status Update", null, null, 0, null) 
+		} else if (notification.contains("MANUAL_UNLOCK")) {
+				lockItem.postUpdate(OFF)
+				lockProxy.postUpdate(OFF)
+				lockItemStatus.postUpdate("UNLOCKED")
+				pushover(null, null, lockLabel +" UNLOCKED (Knob)", null, "Lock: Status Update", null, null, 0, null) 
+			} else if (notification.contains("KEYPAD_LOCK")) {
+					lockItem.postUpdate(ON)
+					lockProxy.postUpdate(ON)
+					lockItemStatus.postUpdate("LOCKED")
+					pushover(null, null, lockLabel +" LOCKED (Keypad)", null, "Lock: Status Update", null, null, 0, null) 
+				} else if (notification.contains("BURGLAR")) {
+						val String intruderMessage = "Intruder at " + lockLabel
+						gLocks.sendCommand(ON)
+						pushover(intruderMessage)
+					} else if (notification.contains("UNLOCK")) {
+						lockItem.postUpdate(ON)
+						lockProxy.postUpdate(ON)
+						lockItemStatus.postUpdate("UNLOCKED")
+						if (transform("JSONPATH", "$.event", alarmRaw) == "6") {//if unlocked with keypad, check which code was used and set presence in case Owntracks hasn't updated yet
+							val StringBuilder presenceMessage = new StringBuilder
+							presenceMessage.append(lockLabel +" UNLOCKED with ")
+							switch (transform("JSONPATH", "$.code", alarmRaw)) {
+								case "1" : {
+									presenceMessage.append("Chris' code")
+									/*
+									if (Chris.state == OFF) {
+										Chris.sendCommand(ON)
+										presenceMessage.append(" and presence state was updated")
+										Thread::sleep(100)//wait for Presence state to update
+									}
+									*/
+									
+								}
+								case "2" : {
+									presenceMessage.append("Alexa's code")
+									/*
+									if (Alexa.state == OFF) { i 
+										Alexa.sendCommand(ON)
+										presenceMessage.append(" and presence state was updated")
+										Thread::sleep(100)//wait for Presence state to update
+									}
+									*/
+								}
+																case "3" : {
+									presenceMessage.append("Annie's code")
+									/*
+									if (Alexa.state == OFF) { i 
+										Alexa.sendCommand(ON)
+										presenceMessage.append(" and presence state was updated")
+										Thread::sleep(100)//wait for Presence state to update
+									}
+									*/
+								}
+							}
+							logInfo("-10-.Locks-AutoLock.F1."+ lockItem, "Lock: {}",presenceMessage.toString)
+							pushover(null, null, presenceMessage.toString, null, "Lock: Status Update", null, null, 1, null) 
+						}
+					else {
+						logInfo("-10-.Locks-AutoLock.F1."+ lockItem, "Lock: Alarm events: {} updated to OFF (unlocked)",lockLabel)
+					}
+					lockItem.postUpdate(OFF)
+					lockProxy.postUpdate(OFF)
+				}
+	
+    true
+]
+
+
+
+//***********************************************************************************************************************************************
+// 													Door Auto Lock Function with Notification integrated with SmartThings & OpenHAB				 																*
+//***********************************************************************************************************************************************
+val Map<String, Timer> timers = newHashMap
+val Functions$Function6<GenericItem, GenericItem, GenericItem, Integer, Map<String, Timer>, String, Boolean> DoorOpenAutoLockParser = [
+    lockItem,
+    lockItemStatus,
+	sensorItem,
+	time,
+	timers,
+	lockDesc	|
+	logInfo("-10-.Locks-AutoLock.F2", "### Function Called: DoorOpenAutoLockParser for "+lockItem.name+" ("+lockDesc+") ###")
+	if(vAutoLock_Override.state == OFF){
+		var String TimerKey = lockItem.name
+	    if (timers.containsKey(TimerKey)) { 
+			logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> " + TimerKey + " found in HashMap. Time is "+time )
+	        var Timer timerTmp = timers.get(TimerKey)
+	        	 if(time == 0) {
+		            timerTmp.cancel()
+		            timers.remove(TimerKey)
+		            logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> " + TimerKey + " Timer Cleared" )
+       			}
+	        
+	       	 	if(lockItemStatus.state == "LOCKED" && time != 0) { // DOOR LOCKED AND TIMER ACTIVE. CANCEL TIMER
+		        	logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> Door Locked. Timer Active. Canceling Auto-Lock Timer")
+		        	timerTmp.cancel()
+		            timers.remove(TimerKey)
+		            pushover(null, null, "LOCKED (Manual)", null, lockDesc +" Auto-Lock Timer Canceled", null, null, 0, null) 
+	        	}
+	        	
+				if(lockItemStatus.state == "UNLOCKED" && time != 0){ //DOOR UNLOCKED, TIMER ACTIVE AND DOOR OPENS. -- RESCHEDULE AUTO LOCK
+					logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> "+sensorItem.name+" Opened and Auto-Lock Timer is active. Rescheduling Auto-Lock Timer for " + time + " Seconds")
+					timerTmp.reschedule(now.plusMinutes(time))
+					if(sensorItem.state == OPEN) {
+						pushover(null, null,"Door OPENED ("+time+"min)", null, lockDesc +" Auto-Lock Timer Reset", null, null, 0, null)
+					} else if (sensorItem.state == CLOSED){
+						pushover(null, null,"Door CLOSED ("+time+"min)", null, lockDesc +" Auto-Lock Timer Reset", null, null, 0, null)
+					}
+				}
+				if(lockItemStatus.state == "" || lockItemStatus.state == "JAMMED" && time != 0) { // JAMMED
+		        	logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> lock JAMMED")
+		        	timerTmp.reschedule(now.plusMinutes(time))	
+		            pushover(null, null," JAMMED & "+sensorItem.name+ " = " + sensorItem.state, null, lockDesc +" Auto-Lock Timer", null, null, 0, null) 
+	        	}
+
+	       
+		} else if(lockItemStatus.state == "UNLOCKED") {   
+	            if(vAutoLock_Override.state == OFF){
+	            	logInfo("-10-.Locks-AutoLock.F2."+ TimerKey,"--> "+ TimerKey + " Door Unlocked, creating Timer")
+	            	pushover(null, null, "UNLOCKED", null, lockDesc +" Auto-Lock Timer Created ("+time+"min)", null, null, 0, null)
+		            timers.put(TimerKey, createTimer(now.plusMinutes(time)) [|
+		            	var String TimerlockKey = lockItem.name
+		            	if(lockItemStatus.state == "UNLOCKED" && sensorItem.state == CLOSED) {
+							logInfo("-10-.Locks-AutoLock.F2."+ TimerlockKey, "--> Auto-Locking. Reason: Timer Expired")
+							pushover(null, null,"LOCKED (Auto)", null, lockDesc +" Auto-Lock Timer Expired", null, null, 0, null)	
+							//LockTrigger = "Auto"
+							sendCommand(lockItem, ON)
+			                timers.remove(TimerlockKey)
+			         	} else if(lockItemStatus.state == "UNLOCKED" && sensorItem.state == OPEN) {
+			                	//var String TimerKey = lockItem.name
+							    if (timers.containsKey(TimerlockKey)) { 
+							        var Timer timerTmp = timers.get(TimerlockKey)
+			                		timerTmp.reschedule(now.plusMinutes(time))
+			                		logInfo("-10-.Locks-AutoLock.F2."+ TimerlockKey, "--> DOOR OPEN. RESCHEDULING")
+			                		pushover(null, null,"Door OPEN. Unable to Auto-Lock. Retrying in " +time+" mins", null, lockDesc +" Auto-Lock Timer", null, null, 1, null) 
+			                	}
+			         	}
+				])
+		}
+		}
+			if(lockItemStatus.state == "" || lockItemStatus.state == "JAMMED") { // JAMMED
+		        	logInfo("-10-.Locks-AutoLock.F2."+ TimerKey, "--> lock JAMMED")
+		        	//timerTmp.reschedule(now.plusMinutes(time))
+		            //pushover(lockDesc +": JAMMED & "+sensorItem.name+ " = " + sensorItem.state)	
+		            pushover(null, null, "JAMMED & "+sensorItem.name+ " = " + sensorItem.state, null, lockDesc +" Auto-Lock Timer", null, null, 1, null) 
+	        }
+	} else {
+		logInfo("-10-.Locks-AutoLock.F2."+ lockItem.name, "<-- Auto-Lock Override is ENABLED. Skipping Auto-Lock Schedule.")
+	}
+    true
+]
+
+//-------------------------------------------------	END OF FUNCTIONS ---------------------------------------------------------------------------
+//														 -----
+//------------------------------------------------- RULES BEGIN BELOW --------------------------------------------------------------------------
+
+
+
+//***********************************************************************************************************************************************
+// 													House Auto-Lock				 																*
+//***********************************************************************************************************************************************
+rule "Auto Lock Timer: House Lock"
+when
+	//Item vHouseLock changed from LOCKED to UNLOCKED or
+	//Item vHouseLock changed from UNLOCKED to LOCKED or
+	Item vHouseLock_Status changed from LOCKED to UNLOCKED or
+	Item vHouseLock_Status changed from UNLOCKED to LOCKED or
+	Item vHouseDoor changed from OPEN to CLOSED or
+	Item vHouseDoor changed from CLOSED to OPEN
+then
+logInfo("-10-.Locks-AutoLock.R1", "### Auto Lock Timer: House Lock ###")
+{
+	if(vHouseLock_Proxy.state != NULL) {
+		DoorOpenAutoLockParser.apply(vHouseLock_Proxy, vHouseLock_Status, vHouseDoor, 30, timers, "House Lock")
+	} else {
+		logInfo("-10-.Locks-AutoLock.R1", "<--House Lock Proxy == null. Ignoring (Most likely a system restart)")
+	}
+}							 
+end
+
+
+//***********************************************************************************************************************************************
+// 													Garage Auto-Lock				 															*
+//***********************************************************************************************************************************************
+rule "Auto Lock Timer: Garage Lock"
+when
+	Item vGarageLock_Status changed from LOCKED to UNLOCKED or
+	Item vGarageLock_Status changed from UNLOCKED to LOCKED or
+	Item vGarageDoor changed from OPEN to CLOSED or
+	Item vGarageDoor changed from CLOSED to OPEN
+then
+logInfo("-10-.Locks-AutoLock.R2", "### Auto Lock Timer: Garage Lock ###")
+{	
+	if(vGarageLock_Proxy.state != NULL) {						
+		DoorOpenAutoLockParser.apply(vGarageLock_Proxy, vGarageLock_Status, vGarageDoor, 60, timers, "Garage Lock")
+		} else {
+		logInfo("-10-.Locks-AutoLock.R2", "<-- Garage Lock Proxy == null. Ignoring (Most likely a system restart)")
+	}
+}
+end
+//***********************************************************************************************************************************************
+// 													House Lock Status Notifications				 											*
+//***********************************************************************************************************************************************
+rule "Lock Status Function: House Lock"
+when
+	Item vHouseLock_Alarm_Raw received update
+then
+logInfo("-10-.Locks-AutoLock.R10", "### Lock Status Function: House Lock ###")
+{	
+	alarmRawParser.apply(vHouseLock_Alarm_Raw.state.toString, vHouseLock, vHouseLock_Proxy, vHouseLock_Status, "House Lock")
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													Garage Lock Status Notifications				 											*
+//***********************************************************************************************************************************************
+rule "Lock Status Function: Garage Lock"
+when
+	Item vGarageLock_Alarm_Raw received update
+then
+logInfo("-10-.Locks-AutoLock.R3", "### Lock Status Function: Garage Lock ###")
+{	
+	alarmRawParser.apply(vGarageLock_Alarm_Raw.state.toString, vGarageLock, vGarageLock_Proxy, vGarageLock_Status, "Garage Lock")
+
+	/*
+	if(vGarageLock_Alarm_Raw.previousState(true,"mysql").state !== NULL){
+	logInfo("RULE.vGarageLock_Alarm_Raw.RECEIVED.UPDATE", "--> Previous State !== NULL. Running FUNCTION.AlarmRawParser for vGarageLock")
+    alarmRawParser.apply(vGarageLock_Alarm_Raw.state.toString,vGarageLock,vGarageLock_Status, "Garage Lock")
+    } else {
+    	logInfo("RULE.vGarageLock_Alarm_Raw.RECEIVED.UPDATE", "<-- Previous State == NULL. Ignoring as it's probably due to a system restart / persistance change")
+    }
+	*/
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													Auto-Lock Overrides		 																	*
+//									- Allow OR Prevent Auto-Locking & Cancel Active Timers														*
+//***********************************************************************************************************************************************
+rule "Auto-Lock Override"
+when
+	Item vAutoLock_Override changed from ON to OFF or
+	Item vAutoLock_Override changed from OFF to ON
+then
+logInfo("-10-.Locks-AutoLock.R4", "### Auto-Lock Override ###")
+{
+	var Number sendMessage = 0
+	val StringBuilder BuildMessage = new StringBuilder
+    if (vAutoLock_Override.state == ON ){ 
+		//<-- Prevent Auto Locking -->
+    	//1. Check all Locks and Cancel any active timers
+    	gLocks?.allMembers.forEach[item|
+    		var String lockKey = item.name
+				if (timers.containsKey(lockKey)) { 
+					logInfo("-10-.Locks-AutoLock.R4", "--> Lock Timer "+item.name+" is ACTIVE. Canceling as we are Preventing Auto-Locking")
+					var Timer locktimerTmp = timers.get(lockKey)
+					locktimerTmp.cancel()
+					timers.remove(lockKey)
+					BuildMessage.append("- "+item.name+ "\n")
+					sendMessage = 1
+				}
+			]
+    }
+    else if(vAutoLock_Override.state == OFF){ 
+		//<-- Allow Auto Locking -->
+		//2. Find any locks that are unlocked and lock them
+    	logInfo("-10-.Locks-AutoLock.R4", " --> Allowing Auto Lock")
+    	gLocks?.allMembers.filter(s | s.state==OFF).forEach[item|
+    		item.sendCommand(ON)
+			BuildMessage.append("- "+item.name+ "\n")
+			sendMessage = 2
+    		logInfo("-10-.Locks-AutoLock.R4", " --> Locking " +item.name)
+		]
+	}
+	//Send PUSHOVER notification based on the action taken.
+	// 1. If override is enabled (Preventing Auto-Lock)
+	// 		a. Notify what locks had active timers and cancel them
+	// 2. If override is disabled (Allowing Auto-Lock)
+	//		b. Notify what locks are currently unlocked and lock them
+	if(sendMessage == 0) {
+		if(vAutoLock_Override.state == ON ) {
+			pushover(null, null,"Disabling Auto-Locking\n\n- No Active Lock Timers.", null,"Override: Auto-Locking", null, null, 0, null)
+		} else if (vAutoLock_Override.state == OFF ) {
+			pushover(null, null,"Enabling Auto-Locking\n\n- All Doors are Locked.", null,"Override: Auto-Locking", null, null, 0, null)
+		}
+	}	
+	else if(sendMessage == 1) {	
+		val message = "Disabling Lock Auto-Locking.\nCanceling Active Lock Timers:\n\n" + BuildMessage+"\n"
+		pushover(null, null, message, null, "Override: Auto-Locking", null, null, 0, null) 
+	} else if(sendMessage == 2){
+		val message = "Enabling Lock Auto-Locking.\nLocking the following doors:\n\n" + BuildMessage+"\n"
+		pushover(null, null, message, null, "Override: Auto-Locking", null, null, 0, null) 
+	}
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													OpenHAB Added locks. Proxy Rule to determine status for remote triggers		 				*	
+//																																				*
+//***********************************************************************************************************************************************
+
+rule "vHouseLock Proxy Status Updates"
+when
+	Item vHouseLock_Proxy received command
+then
+	logInfo("-10-.Locks-AutoLock.R5", "### vHouseLock Proxy Status Updates ###")
+
+{
+	//vHouseLock_Status.sendCommand(receivedCommand)
+	vHouseLock.sendCommand(receivedCommand)
+	val notificationNumber = if (receivedCommand == ON) 3 else 4
+	vHouseLock_Alarm.postUpdate(notificationNumber)
+}	
+end
+
+
+rule "Lock: Update lock states after alarm events (vHouseLock)"
+when
+	Item vHouseLock_Alarm received update
+then
+	logInfo("-10-.Locks-AutoLock.R6", "### Lock: Update lock states after alarm events (vHouseLock) ###")
+{
+    if (vHouseLock_Alarm.state == 1 || vHouseLock_Alarm.state == 5 || vHouseLock_Alarm.state == 3) {
+		vHouseLock_Proxy.postUpdate(ON)
+		vHouseLock_Status.postUpdate("LOCKED")
+        logInfo("-10-.Locks-AutoLock.R6", "--> Lock: Alarm events: vHouseLock updated to ON (locked)")
+    }
+    else if (vHouseLock_Alarm.state == 2 || vHouseLock_Alarm.state == 6 || vHouseLock_Alarm.state == 4) {
+        vHouseLock_Proxy.postUpdate(OFF)
+		vHouseLock_Status.postUpdate("UNLOCKED")
+		logInfo("-10-.Locks-AutoLock.R6", "--> Lock: Alarm events: vHouseLock updated to OFF (unlocked)")
+	}
+    else if (vHouseLock_Alarm.state == 11) {
+        pushover("vHouseLock is jammed")
+    }
+}
+end
+
+
+//***********************************************************************************************************************************************
+// 													OpenHAB Added locks. Proxy Rule to determine status for remote triggers		 				*	
+//																																				*
+//***********************************************************************************************************************************************
+
+rule "vGarageLock Proxy Status Updates"
+when
+	Item vGarageLock_Proxy received command
+then
+	logInfo("-10-.Locks-AutoLock.R5", "### vGarageLock Proxy Status Updates ###")
+
+{
+	//vGarageLock_Status.sendCommand(receivedCommand)
+	vGarageLock.sendCommand(receivedCommand)
+	val notificationNumber = if (receivedCommand == ON) 3 else 4
+	vGarageLock_Alarm.postUpdate(notificationNumber)
+}	
+end
+
+
+rule "Lock: Update lock states after alarm events (vGarageLock)"
+when
+	Item vGarageLock_Alarm received update
+then
+	logInfo("-10-.Locks-AutoLock.R6", "### Lock: Update lock states after alarm events (vGarageLock) ###")
+{
+    if (vGarageLock_Alarm.state == 1 || vGarageLock_Alarm.state == 5 || vGarageLock_Alarm.state == 3) {
+		vGarageLock_Proxy.postUpdate(ON)
+		vGarageLock_Status.postUpdate("LOCKED")
+        logInfo("-10-.Locks-AutoLock.R6", "--> Lock: Alarm events: vGarageLock updated to ON (locked)")
+    }
+    else if (vGarageLock_Alarm.state == 2 || vGarageLock_Alarm.state == 6 || vGarageLock_Alarm.state == 4) {
+        vGarageLock_Proxy.postUpdate(OFF)
+		vGarageLock_Status.postUpdate("UNLOCKED")
+		logInfo("-10-.Locks-AutoLock.R6", "--> Lock: Alarm events: vGarageLock updated to OFF (unlocked)")
+	}
+    else if (vGarageLock_Alarm.state == 11) {
+        pushover("vGarageLock is jammed")
+    }
+}
+end
+
+//***********************************************************************************************************************************************
+// 													Retract Lock if Door is OPEN			 													*
+//***********************************************************************************************************************************************
+/*rule "Retract Lock: House Lock"
+when
+
+	Item vHouseLock_Status changed from UNLOCKED to LOCKED or
+	Item vHouseDoor changed from CLOSED to OPEN
+	
+then
+logInfo("-10-.Locks-AutoLock.R7", "### Retract Lock: House Lock ###")
+{
+	logInfo("-10-.Locks-AutoLock.R7", "--> Door is "+vHouseDoor.state+" & LOCK is "+vHouseLock_Status.state)
+	if(vHouseDoor.state == OPEN && vHouseLock_Status.state == "LOCKED") {
+		logInfo("-10-.Locks-AutoLock.R7", "--> Retracting Deadbolt as the door is open. Protecting the Door JAMB.")
+		Thread::sleep(800)
+		vHouseLock.sendCommand(OFF)
+	}
+}							 
+end
+*/
+
+
+//***********************************************************************************************************************************************
+// 													Smartthings <-> MQTT <-> OPENHAB															*
+//							Keep Command Item (vGarageLock) in Sync with MQTT Status item (vGarageLock_Status) 									*
+//***********************************************************************************************************************************************
+/*rule "Smartthings: Updated vHouseLock based on vHouseLock_Status MQTT"
+when
+	Item vHouseLock_Status changed
+then
+logInfo("-10-.Locks-AutoLock.R8", "### Smartthings: Updated vHouseLock based on vHouseLock_Status MQTT ###")
+	// Currently to utilize MQTT and Smartthings Locks, there are two items. One item sends commands for lock/unlock (vHouseLock)
+	// and another item receives updates from ST's (vGarageLock_Status).  We want to keep vHouseLock in sync when the lock is changes either remotely or physically.
+	// to do that we need to Update vGarageLock whenever vGarageLock_Status Changes.
+	if(vHouseLock_Status.state == "LOCKED") {
+		//update vHouseLock to LOCKED
+		logInfo("-10-.Locks-AutoLock.R8", "--> Lock LOCKED. Updating vHouseLock to ON")
+		Thread::sleep(200)
+		vHouseLock.postUpdate(ON)
+	} else {
+		//update vHouseLock to UNCLOCKED
+		logInfo("-10-.Locks-AutoLock.R8", "--> Lock UNLOCKED. Updating vHouseLock to OFF")
+		Thread::sleep(200)
+		vHouseLock.postUpdate(OFF)
+	}
+end
+*/

@@ -1,0 +1,22 @@
+Group location_Chris
+Location locationChris 						(location_Chris)
+String   mqttPositionChrisRaw   "Chris Raw Owntracks Data [%s]"	(location_Chris,MQTT)	{mqtt="<[openhab:owntracks/openhab/chris:state:default]"}
+String   mqttPositionChrisRaw2   "Chris Raw Zanzito Data [%s]"	(location_Chris,MQTT)	{mqtt="<[openhab:zanzito/chris/location:state:default]"}
+Number   mqttChrisLatitude     "Chris's Lat [%.3f �]"		(location_Chris)	
+Number   mqttChrisLongitude    "Chris's Lon [%.3f �]"		(location_Chris)	
+Number   mqttChrisAccuracy     "Chris's Genauigkeit [%.1f m]"	(location_Chris)	
+Number   mqttChrisBattery      "Chris's iPhone Akku [%s%%]"	(location_Chris,Phone,MQTT,Battery)
+//String 	 locationChris		"Chris Location [%s]"
+String 	mqttChrisCheckDistance
+
+
+
+Group location_Alexa
+Location locationAlexa 						(location_Alexa)
+String   mqttPositionAlexaRaw   "Alexa Raw Owntracks Data [%s]"	(location_Alexa,MQTT)	{mqtt="<[openhab:owntracks/openhab/alexa:state:default]"}
+Number   mqttAlexaLatitude     "Alexa's Lat [%.3f �]"		(location_Alexa)	
+Number   mqttAlexaLongitude    "Alexa's Lon [%.3f �]"		(location_Alexa)	
+Number   mqttAlexaAccuracy     "Alexa's Genauigkeit [%.1f m]"	(location_Alexa)	
+Number   mqttAlexaBattery      "Alexa's iPhone Akku [%s%%]"	(location_Alexa,Phone,MQTT,Battery)
+//String 	 locationChris		"Chris Location [%s]"
+String 	mqttAlexaCheckDistance

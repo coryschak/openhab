@@ -1,0 +1,40 @@
+/* -------------- */
+/* Phone Presence */
+/* -------------- */
+Group:Switch:OR(ON,OFF) gPresent   			"House Occupancy" 		
+Group:Switch:OR(ON,OFF) gChrisPresent 		"Chris Present Group"			(gPresent)	
+Group:Switch:OR(ON,OFF) gAlexaPresent 		"Alexa Present Group" 			(gPresent)
+Group:Switch:OR(ON,OFF) gPresence 		    "Chris and ALexa Presence Group" 	//used for Presence Detection. WHen conditions are met we manually update chris_presence and alexa_presence	with rules
+
+
+
+
+//The reason for this switch is we want to turn on the soffit lights for 10 mins upone arrival. 
+Switch WelcomeHomeLights    "Virutal Switch for When Someone Arrives to turn on lights."
+
+/*Chris*/
+Switch 			chris_presence 			"Chris - Combined (WiFi/GPS) Presence State Status [%s]" 	 (gPresence)
+Switch 			chris_phoneWiFi 		"Chris - WiFi [%s]" 			(gChrisPresent)
+// *
+//region mode with owntracks
+//Switch  		chris_phoneGPS   		"Chris - GPS"   				(gChrisPresent)							{ mqttitude="openhab:owntracks/openhab/chris/event:home" }
+// *
+//manual mode with openhab calculating
+//Switch  		chris_phoneGPS   		"Chris - GPS"   				(gChrisPresent)							{ mqttitude="openhab:owntracks/openhab/chris" }
+Switch  		chris_phoneGPS   		"Chris - GPS"   				(gChrisPresent)							{ mqttitude="openhab:zanzito/chris/location" }
+Number			chris_lat				"Chris Lat:  [%s]"
+Number			chris_lon				"Chris Lon:  [%s]"
+Number			chris_distance			"Chris Distance [%s]"
+
+DateTime        chris_phone_arrival     "Chris Arrived  at	[%1$tm.%1$td.%1$tY %1$tr]" 
+DateTime        chris_phone_departure   "Chris Left at [%1$tm.%1$td.%1$tY %1$tr]" 
+/*Alexa*/
+Switch 			alexa_presence			"Alexa - Combined (WiFi/GPS) Presence State Status [%s]" 	(gPresence)
+Switch 			alexa_phoneWiFi 		"Alexa - WiFi [%s]" 			(gAlexaPresent)
+Switch  		alexa_phoneGPS   		"Alexa - GPS"   				(gAlexaPresent)	 					{ mqttitude="openhab:owntracks/openhab/alexa/event:home" }
+DateTime        alexa_phone_arrival    	"Alexa Arrived at [%1$tm.%1$td.%1$tY %1$tr]" 
+DateTime        alexa_phone_departure   "Alexa Departred at [%1$tm.%1$td.%1$tY %1$tr]" 
+Number			alexa_distance			"Alexa Distance  [%s]"
+
+//smartthings GPS presence detection relayed to Openhab via MQTT
+Switch			alexa_ST_presence		"Alexa Presence via Smartthings GPS"								{mqtt="<[openhab:smartthings/Alexa's iPhone/presence:state:ON:present],<[openhab:smartthings/Alexa's iPhonepresence:state:OFF:not present]"}
